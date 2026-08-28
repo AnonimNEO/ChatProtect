@@ -1,0 +1,52 @@
+{
+  "replies": [
+    {
+      "keywords": ["че делать", "чё делать"],
+      "response": "Снимать штаны и бегать",
+      "media": null,
+      "delete_message": false
+    },
+    {
+      "keywords": ["оцените райс"],
+      "response": "r/unixporn",
+      "media": null,
+      "delete_message": false
+    },
+    {
+      "keywords": ["ты бот", "бот ты", "это бот", "этот бот"],
+      "response": "сам ты бот",
+      "media": "sounds/ты_бот/",
+      "delete_message": false
+    },
+    {
+      "keywords": ["почему работает", "почему работаем"],
+      "response": "А почему нет?",
+      "media": null,
+      "delete_message": false
+    },
+    {
+      "keywords": ["добавишь функцию", "добавь функцию", "добавте функцию", "добавьте функцию", "добавте эту функцию", "добавьте эту функцию"],
+      "response": "Не надо, не трогайте меня",
+      "media": null,
+      "delete_message": false
+    },
+    {
+      "keywords": ["страшно"],
+      "response": null,
+      "media": "sounds/НЕ БОЙСЯ ДЕТОЧКА, БОЛЬНО НЕ БУДЕТ.mp3",
+      "delete_message": false
+    },
+    {
+      "keywords": ["тебя надо фиксить", "тебя фиксить надо", "пофиксите бота", "бота пофиксите", "фиксаните бота", "бота фиксаните", "почините бота", "бота почините", "надо чинить бота", "бота надо чинить", "надо починить бота", "бота надо починить", "надо фиксить бота", "бота надо фиксить", "надо фиксануть бота", "надо бота фиксануть"],
+      "response": "Сам себя фикси",
+      "media": "sounds/fix_bot/",
+      "delete_message": false
+    },
+    {
+      "keywords": ["линукс сложен", "линукс сложный", "линукс тяжёлый", "линукс тяжкий", "linux сложен", "linux сложный", "linux тяжёлый", "linux тяжкий"],
+      "response": null,
+      "media": "sounds/Engineer_taunts02_ru.wav",
+      "delete_message": false
+    }
+  ]
+}
