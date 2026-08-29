@@ -191,6 +191,19 @@ def get_total_points(user_id):
 
 
 
+async def get_user_name(bot, user_id):
+    try:
+        chat = await bot.get_chat(user_id)
+        user_name = chat.username
+        first_name = chat.first_name
+    except:
+        user_name = None
+        first_name = "Пользователь"
+
+    return f"@{user_name}" if user_name else first_name
+
+
+
 async def data(bot, message):
     user_id = message.from_user.id
 
@@ -213,18 +226,18 @@ async def data(bot, message):
             return
 
         # Используем extract_target_user_id для приватного чата
-        target_user_id = extract_target_user_id(bot, message, args)
+        user_id = extract_target_user_id(bot, message, args)
 
     else:
         # В групповом чате обычная логика
-        target_user_id = extract_target_user_id(bot, message, args)
+        user_id = extract_target_user_id(bot, message, args)
 
-    if target_user_id is None:
+    if user_id is None:
         await bot.reply_to(message, "❌ Ошибка: не удалось определить пользователя.")
         return
 
     # Получаем данные из новой БД
-    uid = str(target_user_id)
+    uid = str(user_id)
     try:
         conn = sqlite3.connect(DATABASE_FILE)
         cursor = conn.cursor()
@@ -238,49 +251,40 @@ async def data(bot, message):
         conn.close()
 
         if row is None:
-            await bot.reply_to(message, f"❌ Пользователь {target_user_id} не найден в базе.")
+            await bot.reply_to(message, f"❌ Пользователь {user_id} не найден в базе.")
             return
 
         entry_date, violations, rep_user, rep_mod, msg_count, del_msg_count, edited_msg_count, is_banned = row
 
     except:
-        logger.exception(f"Ошибка получения данных пользователя {target_user_id}")
+        logger.exception(f"Ошибка получения данных пользователя {user_id}")
         await bot.reply_to(message, "❌ Ошибка при получении данных из базы.")
         return
 
-    # Получаем информацию о пользователе
-    try:
-        chat = bot.get_chat(target_user_id)
-        username = chat.username
-        first_name = chat.first_name
-    except:
-        username = None
-        first_name = "Пользователь"
-
-    user_name = f"@{username}" if username else first_name
+    user_name = await get_user_name(bot, user_id)
 
     # Определяем тип пользователя
-    if str(target_user_id) == ADMIN_ID or username == "GroupAnonymousBot":
+    if str(user_id) == ADMIN_ID or user_name == "GroupAnonymousBot":
         user_type = ADMIN_TYPE
         user_name = ADMIN_NAME
-    elif str(target_user_id) == BOT_ID:
+    elif str(user_id) == BOT_ID:
         user_type = BOT_TYPE
         user_name = BOT_NAME
-    elif await is_moderator(bot, target_user_id):
+    elif await is_moderator(bot, user_id):
         user_type = "💪 Модератор"
     else:
         user_type = "🗣️ Участник"
 
-    if DEBUG_MODE and not (str(target_user_id) == ADMIN_ID or username == "GroupAnonymousBot" or str(
-            target_user_id) == BOT_ID):
-        user_name += f" ({target_user_id})"
+    if DEBUG_MODE and not (str(user_id) == ADMIN_ID or user_name == "GroupAnonymousBot" or str(
+            user_id) == BOT_ID):
+        user_name += f" ({user_id})"
 
     # Проверяем, забанен ли целевой пользователь
     if ENABLE_CHECK_IP:
-        ip = await get_ip_address(target_user_id)
-        target_ban_status = is_user_or_ip_banned(target_user_id, ip)
+        ip = await get_ip_address(user_id)
+        target_ban_status = is_user_or_ip_banned(user_id, ip)
     else:
-        target_ban_status = is_user_or_ip_banned(target_user_id)
+        target_ban_status = is_user_or_ip_banned(user_id)
 
     ban_text = ""
     if target_ban_status or is_banned:
@@ -289,7 +293,7 @@ async def data(bot, message):
     # Получаем информацию о мутах из старой системы (если она ещё используется)
     mutations_text = ""
     try:
-        user_data = get_user_data(target_user_id)
+        user_data = get_user_data(user_id)
         if user_data.get("mutations"):
             for i, mut in enumerate(user_data["mutations"], 1):
                 until = datetime.datetime.fromisoformat(mut["until"])

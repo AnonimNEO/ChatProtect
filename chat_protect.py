@@ -32,7 +32,7 @@ from config import TOKEN, LOGGING, DEBUG_MODE, LOG_DIR, USE_PROXY, PROXY_URL, UN
 # Импорт данных о базе данных
 from config import DATABASE_FILE, BAD_WORDS_FILE, REPLACEMENTS_FILE, MODERATORS_FILE
 # Импорт стандартных функций
-from system_functions import is_moderator, get_user_data, extract_target_user_id, data, is_user_or_ip_banned, get_ip_address, add_mute
+from system_functions import is_moderator, get_user_data, extract_target_user_id, data, is_user_or_ip_banned, get_ip_address, add_mute, get_user_name
 # Импорт функций для шуток
 from jokes import send_audio_reply, cache_media, new_member
 # Импорт обработки текста
@@ -128,7 +128,7 @@ async def handle_rep(message):
         return
 
     args = message.text.split()
-    target_user_id = extract_target_user_id(bot, message, args)
+    user_id = extract_target_user_id(bot, message, args)
 
     points = 1
     if len(args) >= 2:
@@ -144,11 +144,12 @@ async def handle_rep(message):
             await bot.reply_to(message, "❌ Очки должны быть числом.")
             return
 
-    add_reputation(target_user_id, points, by_moderator=True)
+    add_reputation(user_id, points, by_moderator=True)
 
-    user_data = get_user_data(target_user_id)
-    logger.success(f"Добавлено {points} очков репутации пользователю {target_user_id}. Всего: {user_data["reputation"]["moderator"]}")
-    await bot.reply_to(message, f"✅ Добавлено {points} очков репутации пользователю {target_user_id}. Всего: {user_data["reputation"]["moderator"]}")
+    user_name = await get_user_name(bot, user_id)
+    user_data = get_user_data(user_id)
+    logger.success(f"Добавлено {points} очков репутации пользователю {user_name} ({user_id}). Всего: {user_data["reputation"]["moderator"]}")
+    await bot.reply_to(message, f"✅ Добавлено {points} очков репутации пользователю {user_name} ({user_id}). Всего: {user_data["reputation"]["moderator"]}")
 
 
 
@@ -158,7 +159,7 @@ async def handle_minus_rep(message):
         return
 
     args = message.text.split()
-    target_user_id = extract_target_user_id(bot, message, args)
+    user_id = extract_target_user_id(bot, message, args)
 
     points = 10
     if len(args) >= 3:
@@ -168,11 +169,12 @@ async def handle_minus_rep(message):
             await bot.reply_to(message, "❌ Очки должны быть числом.")
             return
 
-    subtract_reputation(target_user_id, points, by_moderator=True)
+    subtract_reputation(user_id, points, by_moderator=True)
 
-    user_data = get_user_data(target_user_id)
-    logger.success(f"Снято {points} очков репутации у пользователя {target_user_id}. Всего: {user_data["reputation"]["moderator"]}")
-    await bot.reply_to(message, f"✅ Снято {points} очков репутации у пользователя {target_user_id}. Всего: {user_data["reputation"]["moderator"]}")
+    user_name = await get_user_name(bot, user_id)
+    user_data = get_user_data(user_id)
+    logger.success(f"Снято {points} очков репутации у пользователя {user_id}. Всего: {user_data["reputation"]["moderator"]}")
+    await bot.reply_to(message, f"✅ Снято {points} очков репутации у пользователя {user_id}. Всего: {user_data["reputation"]["moderator"]}")
 
 
 
@@ -184,7 +186,7 @@ async def handle_mute(message):
         return
 
     args = message.text.split()
-    target_user_id = extract_target_user_id(bot, message, args)
+    user_id = extract_target_user_id(bot, message, args)
 
     duration_minutes = 30
     if len(args) >= 3:
@@ -197,20 +199,20 @@ async def handle_mute(message):
     mute_until = datetime.datetime.now() + datetime.timedelta(minutes=duration_minutes)
 
     # Записываем мут в БД
-    add_mute(target_user_id, mute_until)
+    add_mute(user_id, mute_until)
 
     try:
         await bot.restrict_chat_member(
             chat_id=message.chat.id,
-            user_id=target_user_id,
+            user_id=user_id,
             permissions=types.ChatPermissions(can_send_messages=False),
             until_date=int(mute_until.timestamp())
         )
-        logger.success(f"Пользователь {target_user_id} замучен на {duration_minutes} минут")
-        await bot.reply_to(message, f"✅ Пользователь {target_user_id} замучен на {duration_minutes} минут.")
+        logger.success(f"Пользователь {user_id} замучен на {duration_minutes} минут")
+        await bot.reply_to(message, f"✅ Пользователь {await get_user_name(bot, user_id)} ({user_id}) замучен на {duration_minutes} минут.")
         await send_audio_reply(bot, message, r"sounds/Spy_dominationheavy08_ru.wav")
     except Exception as e:
-        logger.exception(f"Ошибка при муте пользователя {target_user_id}")
+        logger.exception(f"Ошибка при муте пользователя {user_id}")
         await bot.reply_to(message, f"❌ Ошибка при муте пользователя:\n{e}")
 
 
@@ -223,9 +225,9 @@ async def handle_unmute(message):
         return
 
     args = message.text.split()
-    target_user_id = extract_target_user_id(bot, message, args)
+    user_id = extract_target_user_id(bot, message, args)
 
-    uid = str(target_user_id)
+    uid = str(user_id)
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.cursor()
 
@@ -237,13 +239,13 @@ async def handle_unmute(message):
     try:
         await bot.restrict_chat_member(
             chat_id=message.chat.id,
-            user_id=target_user_id,
+            user_id=user_id,
             permissions=types.ChatPermissions(can_send_messages=True)
         )
-        logger.success(f"Пользователь {target_user_id} размучен")
-        await bot.reply_to(message, f"✅ Пользователь {target_user_id} размучен.")
+        logger.success(f"Пользователь {user_id} размучен")
+        await bot.reply_to(message, f"✅ Пользователь {await get_user_name(bot, user_id)} ({user_id}) размучен.")
     except Exception as e:
-        logger.exception(f"Ошибка при размуте пользователя {target_user_id}")
+        logger.exception(f"Ошибка при размуте пользователя {user_id}")
         await bot.reply_to(message, f"❌ Ошибка при размуте пользователя\n{e}")
 
 
@@ -252,9 +254,20 @@ async def handle_unmute(message):
 async def handle_ban(message):
     if message.chat.type == "private":
         return
-    if not await is_moderator(bot, message.from_user.id):
+    user_id = message.from_user.id
+    if not await is_moderator(bot, user_id):
         return
-    ban_user(bot, message)
+    try:
+        success = ban_user(bot, message)
+        await bot.kick_chat_member(message.chat.id, user_id)
+    except:
+        success = False
+        logger.exception(f"Ошибка при бане пользователя {user_id}")
+    user_name = await get_user_name(bot, user_id)
+    if success:
+        await bot.reply_to(message, f"Пользователь {user_name} ({user_id}) заблокирован.")
+    else:
+        await bot.reply_to(message, f"Ошибка блокировки пользователя {user_name} ({user_id}).")
 
 
 
@@ -262,9 +275,15 @@ async def handle_ban(message):
 async def handle_unban(message):
     if message.chat.type == "private":
         return
-    if not await is_moderator(bot, message.from_user.id):
+    user_id = message.from_user.id
+    if not await is_moderator(bot, user_id):
         return
-    unban_user(message.from_user.id)
+    user_name = await get_user_name(bot, user_id)
+    success = unban_user(user_id)
+    if success:
+        await bot.reply_to(message, f"Пользователь {user_name} ({user_id}) разблокирован.")
+    else:
+        await bot.reply_to(message, f"Ошибка разблокировки пользователя {user_name} ({user_id}).")
 
 
 
@@ -276,7 +295,7 @@ async def handle_clear(message):
         return
 
     args = message.text.split()
-    target_user_id = extract_target_user_id(bot, message, args)
+    user_id = extract_target_user_id(bot, message, args)
 
     try:
         violations_to_remove = int(args[-1])
@@ -288,7 +307,7 @@ async def handle_clear(message):
         await bot.reply_to(message, "❌ Число нарушений должно быть больше 0")
         return
 
-    user_data = get_user_data(target_user_id)
+    user_data = get_user_data(user_id)
     current_violations = user_data["violations"]
 
     if violations_to_remove > current_violations:
@@ -302,19 +321,11 @@ async def handle_clear(message):
     new_violations = current_violations - violations_to_remove
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.cursor()
-    cursor.execute("UPDATE users SET violations = ? WHERE user_id = ?", (new_violations, target_user_id))
+    cursor.execute("UPDATE users SET violations = ? WHERE user_id = ?", (new_violations, user_id))
     conn.commit()
     conn.close()
 
-    try:
-        chat = await bot.get_chat(target_user_id)
-        username = chat.username
-        first_name = chat.first_name
-    except:
-        username = None
-        first_name = "Пользователь"
-
-    user_name = f"@{username}" if username else first_name
+    user_name = await get_user_name(bot, user_id)
 
     await bot.reply_to(message,
         f"✅ У пользователя {user_name} убрано {violations_to_remove} нарушений.\n"
@@ -355,8 +366,10 @@ async def handle_new_member(message):
     else:
         target_ban_status = is_user_or_ip_banned(user_id)
     if target_ban_status:
-        ban_user(message.from_user.id, await get_ip_address(message.from_user.id))
-        await bot.send_message(message.chat.id,f"Пользователь {message.from_user.id} был заблокирован, так как находится в соответствующей базе.")
+        ban_user(user_id, await get_ip_address(user_id))
+        await bot.kick_chat_member(message.chat.id, user_id)
+        user_name = await get_user_name(bot, user_id)
+        await bot.send_message(message.chat.id,f"Пользователь {user_name} ({user_id}) был заблокирован, так как находится в соответствующей базе.")
     await new_member(bot, message)
 
 

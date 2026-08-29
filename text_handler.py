@@ -25,7 +25,7 @@ from config import SIMILARITY_THRESHOLD
 # Импорт конфигурации анти-спам системы
 from config import MAX_MESSAGES_IN_MINUTE, ENABLE_CHECK_IP, COUNT_MESSAGE_CHECK_FOR_URL, CHECK_FIRST_URL, ENABLE_BAN_USER_FOR_SPAM
 # Импорт стандартных функций
-from system_functions import add_timestamps, user_message_times, add_violation, check_and_apply_mute, get_ip_address, get_user_data
+from system_functions import add_timestamps, user_message_times, add_violation, check_and_apply_mute, get_ip_address, get_user_data, get_user_name
 # Импорт обработчика шуток
 from jokes import handle_trigger_replies
 
@@ -52,7 +52,8 @@ _word_pattern = re.compile(r"\w+", re.UNICODE)
 async def delete_messages(bot, message, user_id):
     try:
         if DEBUG_CHECK_TEXT:
-            await bot.reply_to(message, "Сообщение было удалено автоматической системой модерации.")
+            user_name = await get_user_name(bot, user_id)
+            await bot.reply_to(message, f"{user_name} ({user_id}) Сообщение было удалено автоматической системой модерации.")
         await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
     except:
         logger.exception(f"Ошибка удаления сообщения {message.message_id} от пользователя {user_id}")

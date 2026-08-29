@@ -239,12 +239,12 @@ def ban_user(user_id, ip_address):
 
         conn.commit()
         logger.info(f"Пользователь {user_id} забанен (IP: {ip_address})")
-
+        return True
     except:
         logger.exception(f"Ошибка при блокировке пользователя {user_id}")
     finally:
         conn.close()
-
+    return False
 
 
 def is_user_or_ip_banned(user_id, ip_address=None):
@@ -345,16 +345,12 @@ def unban_user(user_id=None, ip_address=None):
             user_ids = [str(uid) for uid, in users_on_ip]
 
             logger.info(f"Разблокированы все {unbanned_count} пользователей на IP {ip_address}\nID: {", ".join(user_ids)}")
-
             return True
-
         else:
             return False
-
     except:
         conn.rollback()
         logger.exception("Ошибка при разблокировке пользователя")
         return False
-
     finally:
         conn.close()
