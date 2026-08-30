@@ -26,8 +26,8 @@ from config import SIMILARITY_THRESHOLD
 from config import MAX_MESSAGES_IN_MINUTE, ENABLE_CHECK_IP, COUNT_MESSAGE_CHECK_FOR_URL, CHECK_FIRST_URL, ENABLE_BAN_USER_FOR_SPAM
 # Импорт стандартных функций
 from system_functions import add_timestamps, user_message_times, add_violation, check_and_apply_mute, get_ip_address, get_user_data, get_user_name
-# Импорт обработчика шуток
-from jokes import handle_trigger_replies
+# Импорт шуток
+from jokes import handle_trigger_replies, send_audio_reply, get_media_file_path
 
 # Загружаем базы данных
 BAD_WORDS = load_list_from_file(BAD_WORDS_FILE)
@@ -151,6 +151,8 @@ async def messages_handler(bot, message, changed=1):
         if user_data["message_count"] < COUNT_MESSAGE_CHECK_FOR_URL + 1:
             if "https://" in text or "http://" in text:
                 await user_punishment(bot, message, user_id, VIOLATION_FOR_LINKS_MODIFICATOR * changed)
+                if ENABLE_JOKES:
+                    await send_audio_reply(bot, message, get_media_file_path(r"sounds/mute/"))
                 return
 
     exception_count = count_violations(text_processing_stage_1(text), EXCEPTION_WORDS, False)

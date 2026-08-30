@@ -247,6 +247,7 @@ def ban_user(user_id, ip_address):
     return False
 
 
+
 def is_user_or_ip_banned(user_id, ip_address=None):
     """Проверяем забанен ли пользователь по ID или IP"""
     conn = sqlite3.connect(DATABASE_FILE)
