@@ -21,7 +21,7 @@ import os
 # Импорт конфигурации
 from config import DEBUG_JOKES, DATABASE_FILE, CACHE_PAUSE
 # Импорт настроек для шуточных ответов
-from config import MEDIA_EXTENSIONS, AUDIO_EXTENSIONS, PHOTO_EXTENSIONS, VIDEO_EXTENSIONS, SOUNDS_DIR, MEDIA_DIR, GREETINGS_FILE, TRIGGERS_FILE
+from config import MEDIA_EXTENSIONS, AUDIO_EXTENSIONS, PHOTO_EXTENSIONS, VIDEO_EXTENSIONS, MEDIA_DIR, GREETINGS_FILE, TRIGGERS_FILE
 # Импорт стандартных функций
 from system_functions import is_moderator, add_violation, get_ip_address
 # Импорт из базы данных
@@ -173,7 +173,7 @@ async def send_media_cached(bot, message, media_path, trigger_key, cursor, conn)
 
 
 async def cache_media(bot, message):
-    """Кешируем все медиа файлы из SOUNDS_DIR и MEDIA_DIR (включая подкаталоги)"""
+    """Кешируем все медиа файлы из MEDIA_DIR (включая подкаталоги)"""
     try:
         conn = sqlite3.connect(DATABASE_FILE)
         cursor = conn.cursor()
@@ -181,7 +181,7 @@ async def cache_media(bot, message):
         args = message.text.split()
         force_all = len(args) > 1 and args[1].lower() == "all"
 
-        media_dirs = [SOUNDS_DIR, MEDIA_DIR]
+        media_dirs = [MEDIA_DIR]
         cached_count = 0
         skipped_count = 0
         error_count = 0

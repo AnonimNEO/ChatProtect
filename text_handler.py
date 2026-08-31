@@ -19,7 +19,7 @@ from data_base import load_list_from_file, load_replacements, ban_user, is_user_
 # Импорт конфигурации
 from config import DEBUG_CHECK_TEXT, BAD_WORDS_FILE, EXCEPTIONS_FILE, REPLACEMENTS_FILE, MODERATORS_FILE, ENABLE_JOKES, ENABLE_DIFFLIB
 # Импорт констант
-from config import SPAM_VIOLATION_MODIFICATOR, VIOLATION_FOR_LINKS_MODIFICATOR, FIRST_STAGE_VIOLATION_MODIFICATOR, SECOND_STAGE_VIOLATION_MODIFICATOR, THIRD_STAGE_VIOLATION_MODIFICATOR
+from config import SPAM_VIOLATION_MODIFICATOR, VIOLATION_FOR_LINKS_MODIFICATOR, FIRST_STAGE_VIOLATION_MODIFICATOR, SECOND_STAGE_VIOLATION_MODIFICATOR, THIRD_STAGE_VIOLATION_MODIFICATOR, MEDIA_DIR
 # Импорт конфигурации обнаружения нарушений
 from config import SIMILARITY_THRESHOLD
 # Импорт конфигурации анти-спам системы
@@ -152,7 +152,7 @@ async def messages_handler(bot, message, changed=1):
             if "https://" in text or "http://" in text:
                 await user_punishment(bot, message, user_id, VIOLATION_FOR_LINKS_MODIFICATOR * changed)
                 if ENABLE_JOKES:
-                    await send_audio_reply(bot, message, get_media_file_path(r"sounds/mute/"))
+                    await send_audio_reply(bot, message, get_media_file_path(rf"{MEDIA_DIR}/mute/"))
                 return
 
     exception_count = count_violations(text_processing_stage_1(text), EXCEPTION_WORDS, False)

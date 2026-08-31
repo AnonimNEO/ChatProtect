@@ -29,9 +29,9 @@ from data_base import init_database, load_list_from_file, load_replacements, ban
 from create_backups import schedule_backups
 # Импорт основной конфигурации
 from config import TOKEN, LOGGING, DEBUG_MODE, LOG_DIR, USE_PROXY, PROXY_URL, UNBAN_OWNER, ADMIN_ID, ENABLE_CHECK_IP, \
-    VIOLATIONS_FOR_CHANGE_MODIFICATOR, DEBUG_CHECK_TEXT, DEBUG_JOKES, ENABLE_JOKES
+    VIOLATIONS_FOR_CHANGE_MODIFICATOR, DEBUG_CHECK_TEXT, DEBUG_JOKES, BOT_ID
 # Импорт данных о базе данных
-from config import DATABASE_FILE, BAD_WORDS_FILE, REPLACEMENTS_FILE, MODERATORS_FILE, ENABLE_JOKES
+from config import DATABASE_FILE, BAD_WORDS_FILE, REPLACEMENTS_FILE, MODERATORS_FILE, ENABLE_JOKES, MEDIA_DIR
 # Импорт стандартных функций
 from system_functions import is_moderator, get_user_data, extract_target_user_id, data, is_user_or_ip_banned, get_ip_address, add_mute, get_user_name
 # Импорт шуток
@@ -153,7 +153,7 @@ async def handle_rep(message):
     await bot.reply_to(message, f"✅ Добавлено {points} очков репутации пользователю {user_name} ({user_id}). Всего: {user_data["reputation"]["moderator"]}")
     if ENABLE_JOKES:
         if user_id == BOT_ID:
-            await send_audio_reply(bot, message, get_media_file_path(r"sounds/rep_bot/"))
+            await send_audio_reply(bot, message, get_media_file_path(rf"{MEDIA_DIR}/rep_bot/"))
 
 
 
@@ -213,7 +213,7 @@ async def handle_mute(message):
         logger.success(f"Пользователь {user_id} замучен на {duration_minutes} минут")
         await bot.reply_to(message, f"✅ Пользователь {await get_user_name(bot, user_id)} ({user_id}) замучен на {duration_minutes} минут.")
         if ENABLE_JOKES:
-            await send_audio_reply(bot, message, get_media_file_path(r"sounds/mute/"))
+            await send_audio_reply(bot, message, get_media_file_path(rf"{MEDIA_DIR}/mute/"))
     except Exception as e:
         logger.exception(f"Ошибка при муте пользователя {user_id}")
         await bot.reply_to(message, f"❌ Ошибка при муте пользователя:\n{e}")
@@ -248,7 +248,7 @@ async def handle_unmute(message):
         logger.success(f"Пользователь {user_id} размучен")
         await bot.reply_to(message, f"✅ Пользователь {await get_user_name(bot, user_id)} ({user_id}) размучен.")
         if ENABLE_JOKES:
-            await send_audio_reply(bot, message, get_media_file_path(r"sounds/unban-unmute/"))
+            await send_audio_reply(bot, message, get_media_file_path(rf"{MEDIA_DIR}/unban-unmute/"))
     except Exception as e:
         logger.exception(f"Ошибка при размуте пользователя {user_id}")
         await bot.reply_to(message, f"❌ Ошибка при размуте пользователя\n{e}")
@@ -274,7 +274,7 @@ async def handle_ban(message):
     else:
         await bot.reply_to(message, f"Ошибка блокировки пользователя {user_name} ({user_id}).")
     if ENABLE_JOKES:
-        await send_audio_reply(bot, message, get_media_file_path(r"sounds/ban/"))
+        await send_audio_reply(bot, message, get_media_file_path(rf"{MEDIA_DIR}/ban/"))
 
 
 
@@ -292,7 +292,7 @@ async def handle_unban(message):
     else:
         await bot.reply_to(message, f"Ошибка разблокировки пользователя {user_name} ({user_id}).")
     if ENABLE_JOKES:
-        await send_audio_reply(bot, message, get_media_file_path(r"sounds/unban-unmute/"))
+        await send_audio_reply(bot, message, get_media_file_path(rf"{MEDIA_DIR}/unban-unmute/"))
 
 
 
@@ -340,7 +340,7 @@ async def handle_clear(message):
         f"✅ У пользователя {user_name} убрано {violations_to_remove} нарушений.\n"
         f"Было: {current_violations} → Стало: {new_violations}")
     if ENABLE_JOKES:
-        await send_audio_reply(bot, message, get_media_file_path(r"sounds/unban-unmute/"))
+        await send_audio_reply(bot, message, get_media_file_path(rf"{MEDIA_DIR}/unban-unmute/"))
 
 
 
