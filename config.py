@@ -15,7 +15,7 @@ PROXY_URL = ""
 # === Настройки уникальных данных в /data ===
 UNBAN_OWNER = True # Разблокировать создателя?
 ADMIN_ID = 0 # ID создателя (главного админа)
-ADMIN_TYPE = "Владелец" # Уникальный тип главного админа
+ADMIN_TYPE = "" # Уникальный тип главного админа
 ADMIN_NAME = "" # Уникальное имя главного админа
 BOT_ID = 0 # ID бота
 BOT_TYPE = "" # Уникальный тип бота
@@ -54,7 +54,6 @@ MODERATORS_FILE = f"{DATA_DIR}/moderators.txt" # Файл с id модерато
 GREETINGS_FILE = f"{DATA_DIR}/greetings.json" # Файл приветствий
 TRIGGERS_FILE = f"{DATA_DIR}/triggers.json" # Файл шуток
 DATABASE_FILE = f"{DATA_DIR}/users.db" # Файл базы SQLite
-SOUNDS_DIR = "sounds/" # Каталог звуков
 MEDIA_DIR = "media/" # Каталог медиа
 
 # === Настройки Резервного копирования базы данных ===
