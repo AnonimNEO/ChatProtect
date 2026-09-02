@@ -25,7 +25,8 @@ from config import SIMILARITY_THRESHOLD
 # Импорт конфигурации анти-спам системы
 from config import MAX_MESSAGES_IN_MINUTE, ENABLE_CHECK_IP, COUNT_MESSAGE_CHECK_FOR_URL, CHECK_FIRST_URL, ENABLE_BAN_USER_FOR_SPAM
 # Импорт стандартных функций
-from system_functions import add_timestamps, user_message_times, add_violation, check_and_apply_mute, get_ip_address, get_user_data, get_user_name
+from system_functions import add_timestamps, user_message_times, add_violation, check_and_apply_mute, get_ip_address, \
+    get_user_data, get_user_name, is_moderator
 # Импорт шуток
 from jokes import handle_trigger_replies, send_audio_reply, get_media_file_path
 
@@ -111,8 +112,9 @@ def text_processing_stage_2(text):
 
 async def user_punishment(bot, message, user_id, count):
     await delete_messages(bot, message, user_id)
-    data_operation(str(user_id), user_id,"UPDATE users SET delete_message_count = delete_message_count + 1 WHERE user_id = ?")
-    add_violation(user_id, count)
+    if not await is_moderator(bot, user_id):
+        data_operation(str(user_id), user_id,"UPDATE users SET delete_message_count = delete_message_count + 1 WHERE user_id = ?")
+        add_violation(user_id, count)
 
 
 
@@ -142,7 +144,8 @@ async def messages_handler(bot, message, changed=1):
             logger.debug(f"Обнаружен спам от пользователя {user_id}!")
         if ENABLE_BAN_USER_FOR_SPAM:
             ban_user(user_id, get_ip_address(user_id))
-            await bot.kick_chat_member(message.chat.id, user_id)
+            if not await is_moderator(bot, user_id):
+                await bot.kick_chat_member(message.chat.id, user_id)
         else:
             await user_punishment(bot, message, user_id, SPAM_VIOLATION_MODIFICATOR * changed)
         return
