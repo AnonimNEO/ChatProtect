@@ -29,6 +29,8 @@ from system_functions import add_timestamps, user_message_times, add_violation, 
     get_user_data, get_user_name, is_moderator
 # Импорт шуток
 from jokes import handle_trigger_replies, send_audio_reply, get_media_file_path
+# Локализация
+from languages import l
 
 # Загружаем базы данных
 BAD_WORDS = load_list_from_file(BAD_WORDS_FILE)
@@ -54,10 +56,10 @@ async def delete_messages(bot, message, user_id):
     try:
         if DEBUG_CHECK_TEXT:
             user_name = await get_user_name(bot, user_id)
-            await bot.reply_to(message, f"{user_name} ({user_id}) Сообщение было удалено автоматической системой модерации.")
+            await bot.reply_to(message, f'{user_name} ({user_id}) {l("message_delete_for_bot")}')
         await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
     except:
-        logger.exception(f"Ошибка удаления сообщения {message.message_id} от пользователя {user_id}")
+        logger.exception(f'{l("delete_message_error")} {message.message_id} {l("from_the_user")} {user_id}')
 
 
 
@@ -141,7 +143,7 @@ async def messages_handler(bot, message, changed=1):
     # Проверка спама
     if len(user_message_times[str(user_id)]) > MAX_MESSAGES_IN_MINUTE:
         if DEBUG_CHECK_TEXT:
-            logger.debug(f"Обнаружен спам от пользователя {user_id}!")
+            logger.debug(f'{l("spam_detect")} {user_id}!')
         if ENABLE_BAN_USER_FOR_SPAM:
             ban_user(user_id, get_ip_address(user_id))
             if not await is_moderator(bot, user_id):

@@ -38,6 +38,10 @@ from system_functions import is_moderator, get_user_data, extract_target_user_id
 from jokes import send_audio_reply, cache_media, new_member, get_media_file_path
 # Импорт обработки текста
 from text_handler import messages_handler
+# Локализация
+from languages import l
+
+chat_protect_version = "1.1.0 Alpha"
 
 # Глобальный флаг для остановки бота
 stop_event = asyncio.Event()
@@ -66,23 +70,7 @@ async def handle_help(message):
         return
     if not await is_moderator(bot, message.from_user.id):
         return
-    help_text = """
-Общие команды:
-/help - Показать эту справку
-/status - Статус бота
-/data - Информация о пользователе
-
-Команды модератора:
-/rep @user [points] - Добавить репутацию пользователю
-/minus_rep @user [points] - Снизить репутацию пользователю
-/mute @user [minutes] - Заглушить пользователя
-/unmute @user - Размутить пользователя
-/ban @user - Забанить пользователя
-/unban @user - Разбанить пользователя
-/clear @user [points] - Очистить нарушения пользователя
-/reload - Перезагрузить базы данных
-"""
-    await bot.reply_to(message, help_text)
+    await bot.reply_to(message, l("help_text"))
 
 
 
@@ -100,18 +88,24 @@ async def handle_status(message):
 
     if done:
         status_text = \
-f"""📊 Статус бота:
-✅ Бот активен
-👥 Всего пользователей: {user_count}
-🛡️ Режим отладки: {"Включен" if DEBUG_MODE else "Отключен"}
-🗒 Режим отладки для текста: {"Включен" if DEBUG_CHECK_TEXT else "Отключен"}
-🤣 Режим отладки для шуток: {"Включен" if DEBUG_JOKES else "Отключен"}
-📝 Логирование: {"Включено" if LOGGING else "Отключено"}"""
+f"""{l("bot_status")}:
+{l("bot_active")}
+{l("total_users")}: {user_count}
+{l("debug_mode")}: {l("on") if DEBUG_MODE else l("off")}
+{l("debug_mode_text")}: {l("on") if DEBUG_CHECK_TEXT else l("off")}
+{l("debug_mode_jokes")}: {l("on") if DEBUG_JOKES else l("off")}
+{l("loging")}: {l("on") if LOGGING else l("off")}"""
     else:
-        status_text = \
-f"""📊 Статус бота:
-✅ Бот активен"""
+        status_text = f'{l("bot_status")}:\n{l("bot_active")}'
     await bot.reply_to(message, status_text)
+
+
+
+@bot.message_handler(commands=["about"])
+async def handle_status(message):
+    if message.chat.type == "private":
+        return
+    await bot.reply_to(message, f'{l("bot_name")}{chat_protect_version}\n{l("about_bot_text")}')
 
 
 
@@ -136,21 +130,21 @@ async def handle_rep(message):
         try:
             points = int(args[1])
         except ValueError:
-            await bot.reply_to(message, "❌ Очки должны быть числом.")
+            await bot.reply_to(message, l("need_a_number"))
             return
     elif len(args) >= 3:
         try:
             points = int(args[2])
         except ValueError:
-            await bot.reply_to(message, "❌ Очки должны быть числом.")
+            await bot.reply_to(message, l("need_a_number"))
             return
 
     add_reputation(user_id, points, by_moderator=True)
 
     user_name = await get_user_name(bot, user_id)
     user_data = get_user_data(user_id)
-    logger.success(f"Добавлено {points} очков репутации пользователю {user_name} ({user_id}). Всего: {user_data["reputation"]["moderator"]}")
-    await bot.reply_to(message, f"✅ Добавлено {points} очков репутации пользователю {user_name} ({user_id}). Всего: {user_data["reputation"]["moderator"]}")
+    logger.success(f'{l("added")} {points} {l("rep_points")} {l("for_user")} {user_name} ({user_id}). {l("all")}: {user_data["reputation"]["moderator"]}')
+    await bot.reply_to(message, f'{l("added")} {points} {l("rep_points")} {l("for_user")} {user_name} ({user_id}). {l("all")}: {user_data["reputation"]["moderator"]}')
     if ENABLE_JOKES:
         if user_id == BOT_ID:
             await send_audio_reply(bot, message, get_media_file_path(rf"{MEDIA_DIR}/rep_bot/"))
@@ -170,13 +164,13 @@ async def handle_minus_rep(message):
         try:
             points = int(args[2])
         except ValueError:
-            await bot.reply_to(message, "❌ Очки должны быть числом.")
+            await bot.reply_to(message, l("need_a_number"))
             return
 
     subtract_reputation(user_id, points, by_moderator=True)
     user_data = get_user_data(user_id)
-    logger.success(f"Снято {points} очков репутации у пользователя {user_id}. Всего: {user_data["reputation"]["moderator"]}")
-    await bot.reply_to(message, f"✅ Снято {points} очков репутации у пользователя {await get_user_name(bot, user_id)} ({user_id}). Всего: {user_data["reputation"]["moderator"]}")
+    logger.success(f'{l("removed")} {points} {l("rep_points")} {l("for_user")} {user_id}. {l("all")}: {user_data["reputation"]["moderator"]}')
+    await bot.reply_to(message, f'✅ {l("removed")} {points} {l("rep_points")} {l("for_user")} {await get_user_name(bot, user_id)} ({user_id}). {l("all")}: {user_data["reputation"]["moderator"]}')
 
 
 
@@ -195,7 +189,7 @@ async def handle_mute(message):
         try:
             duration_minutes = int(args[2])
         except ValueError:
-            await bot.reply_to(message, "❌ Время должно быть числом.")
+            await bot.reply_to(message, l("need_a_number"))
             return
 
     mute_until = datetime.datetime.now() + datetime.timedelta(minutes=duration_minutes)
@@ -210,13 +204,13 @@ async def handle_mute(message):
             permissions=types.ChatPermissions(can_send_messages=False),
             until_date=int(mute_until.timestamp())
         )
-        logger.success(f"Пользователь {user_id} замучен на {duration_minutes} минут")
-        await bot.reply_to(message, f"✅ Пользователь {await get_user_name(bot, user_id)} ({user_id}) замучен на {duration_minutes} минут.")
+        logger.success(f'{l("user")} {user_id} {l("muted")} {l("on2")} {duration_minutes} {l("minutes")}')
+        await bot.reply_to(message, f'✅ {l("user")} {await get_user_name(bot, user_id)} ({user_id}) {l("muted")} {l("on2")} {duration_minutes} {l("minutes")}.')
         if ENABLE_JOKES:
             await send_audio_reply(bot, message, get_media_file_path(rf"{MEDIA_DIR}/mute/"))
     except Exception as e:
-        logger.exception(f"Ошибка при муте пользователя {user_id}")
-        await bot.reply_to(message, f"❌ Ошибка при муте пользователя:\n{e}")
+        logger.exception(f"{l("mute_error")} {user_id}")
+        await bot.reply_to(message, f"❌ {l("mute_error")}:\n{e}")
 
 
 
@@ -245,13 +239,13 @@ async def handle_unmute(message):
             user_id=user_id,
             permissions=types.ChatPermissions(can_send_messages=True)
         )
-        logger.success(f"Пользователь {user_id} размучен")
-        await bot.reply_to(message, f"✅ Пользователь {await get_user_name(bot, user_id)} ({user_id}) размучен.")
+        logger.success(f"{l("user")} {user_id} {l("unmuted")}")
+        await bot.reply_to(message, f"✅ {l("user")} {await get_user_name(bot, user_id)} ({user_id}) {l("unmuted")}.")
         if ENABLE_JOKES:
             await send_audio_reply(bot, message, get_media_file_path(rf"{MEDIA_DIR}/unban-unmute/"))
     except Exception as e:
-        logger.exception(f"Ошибка при размуте пользователя {user_id}")
-        await bot.reply_to(message, f"❌ Ошибка при размуте пользователя\n{e}")
+        logger.exception(f"{l("unmute_error")} {user_id}")
+        await bot.reply_to(message, f"❌ {l("unmute_error")}\n{e}")
 
 
 
@@ -267,12 +261,12 @@ async def handle_ban(message):
         await bot.kick_chat_member(message.chat.id, user_id)
     except:
         success = False
-        logger.exception(f"Ошибка при бане пользователя {user_id}")
+        logger.exception(f"{l("ban_error")} {user_id}")
     user_name = await get_user_name(bot, user_id)
     if success:
-        await bot.reply_to(message, f"Пользователь {user_name} ({user_id}) заблокирован.")
+        await bot.reply_to(message, f"{l("user")} {user_name} ({user_id}) {l("banned")}.")
     else:
-        await bot.reply_to(message, f"Ошибка блокировки пользователя {user_name} ({user_id}).")
+        await bot.reply_to(message, f"{l("ban_error")} {user_name} ({user_id}).")
     if ENABLE_JOKES:
         await send_audio_reply(bot, message, get_media_file_path(rf"{MEDIA_DIR}/ban/"))
 
@@ -288,9 +282,9 @@ async def handle_unban(message):
     user_name = await get_user_name(bot, user_id)
     success = unban_user(user_id)
     if success:
-        await bot.reply_to(message, f"Пользователь {user_name} ({user_id}) разблокирован.")
+        await bot.reply_to(message, f"{l("user")} {user_name} ({user_id}) {l("unbanned")}.")
     else:
-        await bot.reply_to(message, f"Ошибка разблокировки пользователя {user_name} ({user_id}).")
+        await bot.reply_to(message, f"{l("unbanned_error")} {user_name} ({user_id}).")
     if ENABLE_JOKES:
         await send_audio_reply(bot, message, get_media_file_path(rf"{MEDIA_DIR}/unban-unmute/"))
 
@@ -309,11 +303,11 @@ async def handle_clear(message):
     try:
         violations_to_remove = int(args[-1])
     except ValueError:
-        await bot.reply_to(message, "❌ Последний аргумент должен быть числом.")
+        await bot.reply_to(message, l("need_a_number"))
         return
 
     if violations_to_remove <= 0:
-        await bot.reply_to(message, "❌ Число нарушений должно быть больше 0")
+        await bot.reply_to(message, l("number_must_more_0"))
         return
 
     user_data = get_user_data(user_id)
@@ -322,8 +316,8 @@ async def handle_clear(message):
     if violations_to_remove > current_violations:
         await bot.reply_to(
             message,
-            f"❌ Невозможно убрать {violations_to_remove} нарушений. "
-            f"У пользователя только {current_violations} нарушений."
+            f'{l("remove_error")} {violations_to_remove} {l("violations")}.'
+            f'{l("the_user_has")} {l("only")} {current_violations} {l("violations")}.'
         )
         return
 
@@ -337,8 +331,8 @@ async def handle_clear(message):
     user_name = await get_user_name(bot, user_id)
 
     await bot.reply_to(message,
-        f"✅ У пользователя {user_name} убрано {violations_to_remove} нарушений.\n"
-        f"Было: {current_violations} → Стало: {new_violations}")
+        f'✅ {l("the_user_has")} {user_name} {l("removed")} {violations_to_remove} {l("violations")}.\n'
+        f'{l("was")}: {current_violations} → {l("it_became")}: {new_violations}')
     if ENABLE_JOKES:
         await send_audio_reply(bot, message, get_media_file_path(rf"{MEDIA_DIR}/unban-unmute/"))
 
@@ -355,8 +349,8 @@ async def handle_reload(message):
     REPLACEMENTS = load_replacements(REPLACEMENTS_FILE)
     MODERATORS_IDS = load_list_from_file(MODERATORS_FILE)
 
-    logger.success("Базы данных перезагружены")
-    await bot.reply_to(message, "✅ Базы данных перезагружены.")
+    logger.success(l("base_reloaded"))
+    await bot.reply_to(message, f'✅ {l("base_reloaded")}.')
 
 
 
@@ -380,7 +374,7 @@ async def handle_new_member(message):
         ban_user(user_id, await get_ip_address(user_id))
         await bot.kick_chat_member(message.chat.id, user_id)
         user_name = await get_user_name(bot, user_id)
-        await bot.send_message(message.chat.id,f"Пользователь {user_name} ({user_id}) был заблокирован, так как находится в соответствующей базе.")
+        await bot.send_message(message.chat.id,f'{l("user")} {user_name} ({user_id}) {l("user_banned_for_base")}.')
     await new_member(bot, message)
 
 
@@ -425,7 +419,7 @@ async def handle_edited_message(message):
         conn.commit()
         conn.close()
     except:
-        logger.exception(f"Ошибка обновления edited_message_count для {user_id}")
+        logger.exception(f'{l("update_error")} edited_message_count {l("for")} {user_id}')
 
     await messages_handler(bot, message, VIOLATIONS_FOR_CHANGE_MODIFICATOR)
 
@@ -433,7 +427,7 @@ async def handle_edited_message(message):
 
 def signal_handler(signum, frame):
     global should_stop
-    logger.info(">>>Получен сигнал остановки (Ctrl + C)")
+    logger.info(l("stop_signal_detected"))
     should_stop = True
     stop_event.set()
     exit()
@@ -449,7 +443,7 @@ async def start_chat_protect_bot():
 
     while not should_stop:
         try:
-            logger.info(">>>Запуск бота...")
+            logger.info(l("start_bot"))
             await bot.infinity_polling(timeout=10,
                 allowed_updates=["message", "edited_message", "callback_query"])
         except Exception as e:
@@ -457,18 +451,18 @@ async def start_chat_protect_bot():
                 break
             if isinstance(e, requests.exceptions.ConnectionError):
                 if DEBUG_MODE:
-                    logger.debug(">>>Потеря соединения с интернетом. Переподключение через 5 секунд...")
+                    logger.debug(l("connect_timeout"))
                 await asyncio.sleep(5)
             elif isinstance(e, requests.exceptions.Timeout):
                 if DEBUG_MODE:
-                    logger.debug(">>>Timeout соединения. Переподключение через 5 секунд...")
+                    logger.debug(l("connect_timeout"))
                 await asyncio.sleep(5)
             else:
                 if DEBUG_MODE:
-                    logger.exception(">>>Ошибка подключения. Переподключение через 5 секунд...")
+                    logger.exception(l("connect_timeout"))
                 await asyncio.sleep(5)
 
-    logger.info(">>Бот - выключен")
+    logger.info(l("bot_off"))
 
 
 

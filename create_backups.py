@@ -18,8 +18,11 @@ import time
 import os
 # Дата и время
 import datetime
+
 # Конфигурация
 from config import DATA_DIR, ENABLED_BACKUP, INTERVAL_BACKUP, BACKUP_DIR, COMPRESS_BACKUP, DELETE_OLD_BACKUPS, BACKUP_MAX_FILES, DEBUG_MODE
+# Локализация
+from languages import l
 
 def cleanup_old_backups():
     """Удаляем старые бэкапы, оставляя только последние BACKUP_MAX_FILES"""
@@ -38,7 +41,7 @@ def cleanup_old_backups():
                 os.remove(old_path)
             elif os.path.isdir(old_path):
                 shutil.rmtree(old_path)
-            logger.info(f"Удалён старый бэкап: {old_path}")
+            logger.info(f'{l("old_bakcup_delete")}: {old_path}')
 
 
 
@@ -62,11 +65,11 @@ def create_backup():
                     file_path = os.path.join(root, file)
                     archive_name = os.path.relpath(file_path, ".")
                     zipf.write(file_path, archive_name)
-        logger.debug(f"Создан бэкап: {backup_name}")
+        logger.debug(f'{l("create_backup")}: {backup_name}')
     else:
         backup_name = f"{BACKUP_DIR}/{timestamp}_backup"
         shutil.copytree(DATA_DIR, backup_name)
-        logger.info(f"Создан бэкап: {backup_name}")
+        logger.info(f'{l("create_backup")}: {backup_name}')
 
     # Удаляем старые бэкапы
     if DELETE_OLD_BACKUPS:
@@ -81,7 +84,7 @@ def schedule_backups():
 
     # Создай бэкап при запуске
     create_backup()
-    logger.info("Стартовый бэкап создан")
+    logger.info(l("start_backup_create"))
 
     def backup_cycle():
         while True:
@@ -91,4 +94,4 @@ def schedule_backups():
     backup_thread = threading.Thread(target=backup_cycle, daemon=True)
     backup_thread.start()
     if DEBUG_MODE:
-        logger.debug(f"Система резервного копирования запущена, интервал: {INTERVAL_BACKUP} секунд)")
+        logger.debug(f'{l("create_backups_startef")}: {INTERVAL_BACKUP} {l("seconds")})')

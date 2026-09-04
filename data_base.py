@@ -15,8 +15,11 @@ import json
 import os
 # Логирование
 from loguru import logger
+
 # Импорт конфигурации
 from config import DATABASE_FILE, DEBUG_MODE
+# Локализация
+from languages import l
 
 def init_database():
     conn = sqlite3.connect(DATABASE_FILE)
@@ -238,10 +241,10 @@ def ban_user(user_id, ip_address):
         cursor.execute("UPDATE users SET is_banned = 1 WHERE user_id = ?", (user_id,))
 
         conn.commit()
-        logger.info(f"Пользователь {user_id} забанен (IP: {ip_address})")
+        logger.info(f'{l("user")} {user_id} {l("banned")} (IP: {ip_address})')
         return True
     except:
-        logger.exception(f"Ошибка при блокировке пользователя {user_id}")
+        logger.exception(f"{l("ban_error")} {user_id}")
     finally:
         conn.close()
     return False
@@ -322,7 +325,7 @@ def unban_user(user_id=None, ip_address=None):
                 cursor.execute("DELETE FROM violators WHERE user_id = ?", (int(user_id),))
                 cursor.execute("UPDATE users SET is_banned = 0 WHERE user_id = ?", (int(user_id),))
                 conn.commit()
-                logger.info(f"Пользователь {user_id} разблокирован.")
+                logger.info(f'{l("user")} {user_id} {l("unbanned")}.')
                 return True
             else:
                 return False
@@ -345,13 +348,13 @@ def unban_user(user_id=None, ip_address=None):
 
             user_ids = [str(uid) for uid, in users_on_ip]
 
-            logger.info(f"Разблокированы все {unbanned_count} пользователей на IP {ip_address}\nID: {", ".join(user_ids)}")
+            logger.info(f"{l("unlock_al")} {unbanned_count} {l("users_on")} IP {ip_address}\nID: {", ".join(user_ids)}")
             return True
         else:
             return False
     except:
         conn.rollback()
-        logger.exception("Ошибка при разблокировке пользователя")
+        logger.exception(l("unbanned_error"))
         return False
     finally:
         conn.close()

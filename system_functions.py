@@ -25,6 +25,8 @@ from config import DEBUG_MODE, MODERATORS_FILE, DATABASE_FILE, ENABLE_CHECK_IP, 
 from config import VIOLATION_POINTS_MULTIPLIER, REP_USER_DIVISOR, REP_MODERATOR_DIVISOR, MAX_VIOLATIONS, MINUS_MODERATOR_REP_WHEN_MUTING, COUNT_MINUS_MODERATOR_REP
 # Импорт базы данных
 from data_base import load_list_from_file, is_user_or_ip_banned
+# Локализация
+from languages import l
 
 MODERATORS_IDS = load_list_from_file(MODERATORS_FILE)
 
@@ -96,7 +98,7 @@ def extract_target_user_id(bot, message, args=None):
                 return int(chat.id)
             except:
                 if DEBUG_MODE:
-                    logger.exception(f"Не удалось найти пользователя {arg}")
+                    logger.exception(f'{l("user_not_found")} {arg}')
                 # Возвращаем текущего пользователя как fallback
                 return int(message.from_user.id)
 
@@ -173,7 +175,7 @@ def add_violation(user_id, count=1):
         conn.commit()
         conn.close()
     except:
-        logger.exception(f"Ошибка добавления нарушения для {user_id}")
+        logger.exception(f'{l("add_violation_error")} {user_id}')
 
 
 
@@ -198,7 +200,7 @@ async def get_user_name(bot, user_id):
         first_name = chat.first_name
     except:
         user_name = None
-        first_name = "Пользователь"
+        first_name = l("user")
 
     return f"@{user_name}" if user_name else first_name
 
@@ -233,7 +235,7 @@ async def data(bot, message):
         user_id = extract_target_user_id(bot, message, args)
 
     if user_id is None:
-        await bot.reply_to(message, "❌ Ошибка: не удалось определить пользователя.")
+        await bot.reply_to(message, l("user_not_found"))
         return
 
     # Получаем данные из новой БД
@@ -251,14 +253,16 @@ async def data(bot, message):
         conn.close()
 
         if row is None:
-            await bot.reply_to(message, f"❌ Пользователь {user_id} не найден в базе.")
+            await bot.reply_to(message, f'❌ {l("user_not_found")} {user_id}')
             return
 
         entry_date, violations, rep_user, rep_mod, msg_count, del_msg_count, edited_msg_count, is_banned = row
 
     except:
-        logger.exception(f"Ошибка получения данных пользователя {user_id}")
-        await bot.reply_to(message, "❌ Ошибка при получении данных из базы.")
+        text = f'{l("get_user_info_error")} {user_id}'
+        logger.exception(text)
+        await bot.reply_to(message, text)
+        del text
         return
 
     user_name = await get_user_name(bot, user_id)
@@ -271,9 +275,9 @@ async def data(bot, message):
         user_type = BOT_TYPE
         user_name = BOT_NAME
     elif await is_moderator(bot, user_id):
-        user_type = "💪 Модератор"
+        user_type = l("moderator")
     else:
-        user_type = "🗣️ Участник"
+        user_type = l("member")
 
     if DEBUG_MODE and not (str(user_id) == ADMIN_ID or user_name == "GroupAnonymousBot" or str(
             user_id) == BOT_ID):
@@ -288,7 +292,7 @@ async def data(bot, message):
 
     ban_text = ""
     if target_ban_status or is_banned:
-        ban_text = f"⛔ Статус: ЗАБАНЕН\n\n"
+        ban_text = f'{l("status")}: {l("is_banned")}\n\n'
 
     # Получаем информацию о мутах из старой системы (если она ещё используется)
     mutations_text = ""
@@ -297,26 +301,25 @@ async def data(bot, message):
         if user_data.get("mutations"):
             for i, mut in enumerate(user_data["mutations"], 1):
                 until = datetime.datetime.fromisoformat(mut["until"])
-                mutations_text += f"\n {i}. До: {until.strftime("%Y-%m-%d %H:%M:%S")}"
+                mutations_text += f"\n {i}. {l("to")}: {until.strftime("%Y-%m-%d %H:%M:%S")}"
         else:
-            mutations_text = "\n Нет активных мутов"
+            mutations_text = f'\n {l("no_mutes")}'
     except:
-        mutations_text = "\n Информация о мутах недоступна"
+        mutations_text = f'\n {l("error")}'
 
     # Формируем ответ
-    data_text = f"""
-📊 Статистика пользователя {user_name}
-✍️ Тип пользователя: {user_type}
+    data_text = f"""{l("user_statistics")} {user_name}
+{l("user_type")}: {user_type}
 
-{ban_text}📅 Дата вступления: {entry_date}
-⚠️ Нарушений: {violations}
-💬 Отправлено сообщений: {msg_count}
-❌ Удалено сообщений: {del_msg_count}
-✏️ Отредактировано сообщений: {edited_msg_count}
-⭐ Репутация от пользователей: {rep_user}
-🎩 Репутация от модераторов: {rep_mod}
+{ban_text}{l("join_date")}: {entry_date}
+⚠️{l("violations")[0].upper()}{l("violations")[1:]}: {violations}
+{l("send_messages")}: {msg_count}
+{l("deleted_messages")}: {del_msg_count}
+{l("edited_messages")}: {edited_msg_count}
+{l("rep_from_users")}: {rep_user}
+{l("rep_from_moderators")}: {rep_mod}
 
-🔇 Муты: {mutations_text}"""
+{l("mutes")}: {mutations_text}"""
     await bot.reply_to(message, data_text)
 
 
@@ -385,14 +388,16 @@ async def check_and_apply_mute(bot, user_id, message):
             )
 
             await bot.reply_to(message,
-                               f"🔇 Пользователь замучен на {duration_minutes} минут до {mute_until.strftime("%H:%M")}\n"
-                               f"Это мут #{count_mutations + 1}")
+                               f'{l("user_muted")} {duration_minutes} {l("minutes")} {l("to")} {mute_until.strftime("%H:%M")}\n'
+                               f'{l("this")} #{count_mutations + 1} {l("mute")}')
 
-            logger.info(f"Пользователь {user_id} замучен на {duration_minutes} минут")
+            logger.info(f'{l("user_muted")} ({user_id}) {l("to")} {duration_minutes} {l("minutes")}')
 
         except:
-            logger.exception(f"Ошибка при муте пользователя {user_id}")
-            await bot.reply_to(message, "❌ Не удалось наложить мут")
+            text = f'{l("mute_error")} {user_id}'
+            logger.exception(text)
+            await bot.reply_to(message, text)
+            del text
 
         return mute_until
 
@@ -407,5 +412,5 @@ async def get_ip_address(user_id):
         ip = loop.run_in_executor(None, lambda: requests.get("https://api.ipify.org", timeout=3).text)
         return ip
     except:
-        logger.exception(f"Ошибка получения IP для {user_id}")
-        return "unknown"
+        logger.exception(f'{l("get_ip_error")} {user_id}')
+        return l("error")

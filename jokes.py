@@ -22,10 +22,10 @@ import os
 from config import DEBUG_JOKES, DATABASE_FILE, CACHE_PAUSE
 # Импорт настроек для шуточных ответов
 from config import MEDIA_EXTENSIONS, AUDIO_EXTENSIONS, PHOTO_EXTENSIONS, VIDEO_EXTENSIONS, MEDIA_DIR, GREETINGS_FILE, TRIGGERS_FILE
-# Импорт стандартных функций
-from system_functions import is_moderator, add_violation, get_ip_address
 # Импорт из базы данных
 from data_base import load_json, ban_user
+# Локализация
+from languages import l
 
 async def send_audio_reply(bot, message, audio_file_path):
     """Отправляем аудиофайл ответом на сообщение"""
@@ -33,11 +33,11 @@ async def send_audio_reply(bot, message, audio_file_path):
         with open(audio_file_path, "rb") as audio:
             await bot.send_audio(message.chat.id, audio, reply_to_message_id=message.message_id)
         if DEBUG_JOKES:
-            logger.debug(f"Аудиофайл отправлен ответом на сообщение {message.message_id}")
+            logger.debug(f'{l("audio_send")} {message.message_id}')
     except FileNotFoundError:
-        logger.error("❌ Аудиофайл не найден.")
+        logger.error(l("file_not_found"))
     except:
-        logger.exception(f"❌ Ошибка при отправке аудио файла")
+        logger.exception(l("media_send_error"))
 
 
 
@@ -60,7 +60,7 @@ def get_media_file_path(media_path):
         try:
             files_in_dir = os.listdir(str(media_path))
         except:
-            logger.exception(f"Ошибка: {media_path}")
+            logger.exception(f'{l("error")}: {media_path}')
             return None
 
         compatible_files = [
@@ -76,7 +76,7 @@ def get_media_file_path(media_path):
         return full_path
 
     except:
-        logger.exception(f"Ошибка: {media_path}")
+        logger.exception(f'{l("error")}: {media_path}')
         return None
 
 
@@ -108,7 +108,7 @@ async def send_media_cached(bot, message, media_path, trigger_key, cursor, conn)
     logger.debug(f"[get_media_file_path result] file_path={file_path}, type={file_path}")
 
     if not file_path:
-        logger.error(f"Медиа файл не найден: {media_path}")
+        logger.error(f'{l("file_not_found")}: {media_path}')
         return False
 
     send_method = get_file_type(file_path)
@@ -121,8 +121,8 @@ async def send_media_cached(bot, message, media_path, trigger_key, cursor, conn)
             (cache_key,)
         )
         cached = cursor.fetchone()
-    except Exception as e:
-        logger.exception(f"❌ Ошибка в SELECT, cache_key={repr(cache_key)}, type={type(cache_key)}")
+    except:
+        logger.exception(f'{l("error")} SELECT, cache_key={repr(cache_key)}, type={type(cache_key)}')
         raise
 
     target_topic = getattr(message, "message_thread_id", None)
@@ -136,10 +136,10 @@ async def send_media_cached(bot, message, media_path, trigger_key, cursor, conn)
                 message_thread_id=target_topic
             )
             if DEBUG_JOKES:
-                logger.debug(f"Переслано из кеша: {file_path}")
+                logger.debug(f'{l("forwarded_from_cache")}: {file_path}')
             return True
         except:
-            logger.exception(f"❌ Ошибка при пересылке из кеша: {file_path}")
+            logger.exception(f'❌ {l("forwarded_from_cache_error")}: {file_path}')
             cursor.execute("DELETE FROM message_cache WHERE trigger_key = ?", (cache_key,))
             conn.commit()
 
@@ -160,14 +160,14 @@ async def send_media_cached(bot, message, media_path, trigger_key, cursor, conn)
             )
             conn.commit()
             if DEBUG_JOKES:
-                logger.debug(f"Отправлено и закешировано: {file_path}")
+                logger.debug(f'{l("send_for_cache")}: {file_path}')
             return True
 
     except FileNotFoundError:
-        logger.error(f"❌ Файл не найден: {file_path}")
+        logger.error(f'{l("file_not_found")} {file_path}')
         return False
     except:
-        logger.exception(f"❌ Ошибка при отправке медиа: {file_path}")
+        logger.exception(f'{l("media_send_error")}: {file_path}')
         return False
 
 
@@ -189,10 +189,10 @@ async def cache_media(bot, message):
 
         target_topic = getattr(message, "message_thread_id", None)
 
-        mode_text = "принудительное кеширование всех файлов" if force_all else "кеширование только новых файлов"
+        mode_text = l("cache_media_all") if force_all else l("cache_media")
         await bot.send_message(
             message.chat.id,
-            f"⏳ Начинаю {mode_text}...",
+            f'⏳ {l("starting")} {mode_text}...',
             message_thread_id=target_topic
         )
 
@@ -201,13 +201,13 @@ async def cache_media(bot, message):
             try:
                 cursor.execute("DELETE FROM message_cache WHERE trigger_key LIKE 'trigger_%'")
                 conn.commit()
-                logger.info("Все старые ID сообщений удалены из кеша")
+                logger.info(l("cache_clear"))
             except:
-                logger.exception(f"❌ Ошибка при очистке кеша")
+                logger.exception(l("cache_clear_error"))
 
         for directory in media_dirs:
             if not os.path.exists(directory):
-                logger.error(f"Каталог не найден: {directory}")
+                logger.error(f'{l("dir_not_found")}: {directory}')
                 continue
 
             for root, dirs, files in os.walk(directory):
@@ -249,14 +249,14 @@ async def cache_media(bot, message):
 
                         cached_count += 1
                         if DEBUG_JOKES:
-                            logger.debug(f"Закеширован: {file_path}")
+                            logger.debug(f'{l("send_for_cache")}: {file_path}')
 
                         await asyncio.sleep(CACHE_PAUSE)
 
                     except Exception as e:
                         error_count += 1
                         failed_files.append(f"{file_path} ({type(e).__name__})")
-                        logger.exception(f"❌ Ошибка при кешировании: {file_path}")
+                        logger.exception(f'{l("cache_media_error")}: {file_path}')
 
                         try:
                             cursor.execute(
@@ -265,33 +265,30 @@ async def cache_media(bot, message):
                             )
                             conn.commit()
                             if DEBUG_JOKES:
-                                logger.debug(f"Удален старый ID сообщения для: {file_path}")
+                                logger.debug(f'{l("delete_old_cache_id")}: {file_path}')
                         except:
-                            logger.exception(f"Ошибка при удалении старого ID")
+                            logger.exception(l("delete_old_cache_id_error"))
 
         conn.close()
 
-        summary = f"""✅ Кеширование завершено!
-
-📊 Статистика:
-✅ Закешировано: {cached_count} файлов
-➡️ Пропущено: {skipped_count} файлов
-❌ Ошибок: {error_count}
-"""
+        summary = f"""{l("cache_media_success")}
+{l("cached")}: {cached_count} {l("file2")}
+{l("skipped")}: {skipped_count} {l("file2")}
+{l("errors")}: {error_count}"""
 
         # Если были ошибки, добавляем детали
         if failed_files:
-            summary += f"\n⚠️ Файлы с ошибками:\n"
+            summary += f'\n{l("file_wit_errors")}:\n'
             for failed in failed_files[:10]: # Показываем первые 10
                 summary += f"• {failed}\n"
             if len(failed_files) > 10:
-                summary += f"• и ещё {len(failed_files) - 10}..."
+                summary += f'• {l("and")} {len(failed_files) - 10} {"file2"}'
 
         await bot.send_message(message.chat.id, summary, message_thread_id=target_topic)
 
     except Exception as e:
-        logger.exception("Ошибка при кешировании медиа")
-        await bot.reply_to(message, f"❌ Ошибка: {e}")
+        logger.exception(l("cache_media_error"))
+        await bot.reply_to(message, f'❌ {l("cache_media_error")}: {e}')
 
 
 
@@ -300,7 +297,7 @@ async def new_member(bot, message):
     try:
         await bot.delete_message(message.chat.id, message.message_id)
     except:
-        logger.exception(f"Ошибка удаления сообщения о вступлении")
+        logger.exception(f'{l("delete_message_error")} {l("about_joining")}')
 
     # Загружаем базу приветствий
     greetings_db = load_json(GREETINGS_FILE)
@@ -322,20 +319,20 @@ async def new_member(bot, message):
         conn.commit()
         conn.close()
 
-        logger.info(f"Новый пользователь {user_id} вступил в чат в {entry_date}")
+        logger.info(f'{l("new_user")} {user_id} {l("joined_in")} {entry_date}')
 
         # Проверяем точный юзернейм (в нижнем регистре)
         greeting_text = None
 
         # Проверяем точный юзернейм
-        for exact_nick, text in greetings_db.get("ники", {}).items():
+        for exact_nick, text in greetings_db.get("name", {}).items():
             if exact_nick.lower() == username_lower:
                 greeting_text = text
                 break
 
         # Если точный ник не найден, проверяем ключевые слова
         if not greeting_text:
-            for keyword, text in greetings_db.get("ключевые слова в нике", {}).items():
+            for keyword, text in greetings_db.get("words", {}).items():
                 if keyword.lower() in username_lower:
                     greeting_text = text
                     break
@@ -345,7 +342,7 @@ async def new_member(bot, message):
             try:
                 await bot.send_message(chat_id=message.chat.id, text=greeting_text)
             except:
-                logger.exception(f"Ошибка при отправки приветствия")
+                logger.exception(l("send_hello_error"))
 
 
 
@@ -377,7 +374,7 @@ async def handle_trigger_replies(message, bot, msg_lower):
                         message_id=message.message_id
                     )
                 except:
-                    logger.exception("Ошибка при удалении сообщения при тригеров")
+                    logger.exception(l("delete_message_error"))
 
             break
 
