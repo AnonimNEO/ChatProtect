@@ -1,5 +1,5 @@
 # === Основная конфигурация ===
-current_localization = "ru" # Язык бота
+CURRENT_LOCALIZATION = "ru" # Язык бота
 
 TOKEN = "" # Токен бота
 

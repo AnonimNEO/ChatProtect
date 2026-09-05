@@ -19,6 +19,7 @@ import datetime
 import time
 import requests
 import asyncio
+
 # Импорт конфигурации
 from config import DEBUG_MODE, MODERATORS_FILE, DATABASE_FILE, ENABLE_CHECK_IP, ADMIN_TYPE, ADMIN_NAME, BOT_ID, BOT_TYPE, BOT_NAME, ADMIN_ID
 # Импорт констант репутации

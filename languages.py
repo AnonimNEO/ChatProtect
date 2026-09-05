@@ -1,12 +1,13 @@
-from config import current_localization
+from config import CURRENT_LOCALIZATION
 copyleft_years = "2026"
 
-localization = {
+localizations = {
     "ru": {
 "help_text":  """Общие команды:
 /help - Показать эту справку
 /status - Статус бота
 /data - Информация о пользователе
+/about - Информация о боте
 
 Команды модератора:
 /rep @user [points] - Добавить репутацию пользователю
@@ -405,8 +406,10 @@ NEO Organization - Copyleft {copyleft_years}""",
 
 
 
-def l(text_key):
-    try:
-        return localization[current_localization[text_key]]
-    except:
-        return text_key
+# Возвращаем нужный текст или сам ключ если нужного текста нет в текущем языке
+def l(key, language=CURRENT_LOCALIZATION):
+    """Функция для получения текста из локализации
+    key - имя ключа текста/реплики/диалога
+    language - Язык на котором вернуть текст
+    return - функция возвращает текст из локализации, если такого ключа в указанной локализации нет то будет возвращён сам ключ"""
+    return localizations.get(language, {}).get(key) or key
