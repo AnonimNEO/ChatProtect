@@ -7,15 +7,9 @@
       "delete_message": false
     },
     {
-      "keywords": ["оцените райс"],
-      "response": "r/unixporn",
-      "media": null,
-      "delete_message": false
-    },
-    {
       "keywords": ["ты бот", "бот ты", "это бот", "этот бот"],
       "response": "сам ты бот",
-      "media": "sounds/ты_бот/",
+      "media": "media/ты_бот/",
       "delete_message": false
     },
     {
@@ -33,19 +27,49 @@
     {
       "keywords": ["страшно"],
       "response": null,
-      "media": "sounds/НЕ БОЙСЯ ДЕТОЧКА, БОЛЬНО НЕ БУДЕТ.mp3",
+      "media": "media/НЕ БОЙСЯ ДЕТОЧКА, БОЛЬНО НЕ БУДЕТ.mp3",
       "delete_message": false
     },
     {
       "keywords": ["тебя надо фиксить", "тебя фиксить надо", "пофиксите бота", "бота пофиксите", "фиксаните бота", "бота фиксаните", "почините бота", "бота почините", "надо чинить бота", "бота надо чинить", "надо починить бота", "бота надо починить", "надо фиксить бота", "бота надо фиксить", "надо фиксануть бота", "надо бота фиксануть"],
       "response": "Сам себя фикси",
-      "media": "sounds/fix_bot/",
+      "media": "media/mems/fix_bot/",
       "delete_message": false
     },
     {
-      "keywords": ["линукс сложен", "линукс сложный", "линукс тяжёлый", "линукс тяжкий", "linux сложен", "linux сложный", "linux тяжёлый", "linux тяжкий"],
+      "keywords": ["rawr.pink"],
+      "response": "Сообщение было удалено автоматической системой модерации.",
+      "media": "media/Engineer_autodejectedtie02_ru.wav",
+      "delete_message": true
+    },
+    {
+      "keywords": ["шутка", "пошутил"],
       "response": null,
-      "media": "sounds/Engineer_taunts02_ru.wav",
+      "media": "media/mems/смех/",
+      "delete_message": false
+    },
+    {
+      "keywords": ["рандомный звук", "рандомная фраза"],
+      "response": "окей",
+      "media": "media/",
+      "delete_message": false
+    },
+    {
+      "keywords": ["где админ", "админ где", "админ ты где", "где ты админ", "позовите админа", "админа позовоите"],
+      "response": null,
+      "media": "media/mems/reply/где_админ/",
+      "delete_message": false
+    },
+    {
+      "keywords": ["матюкаюсь", "матерюсь", "матюкаешся", "материшся"],
+      "response": null,
+      "media": "media/mems/reply/маты/",
+      "delete_message": false
+    },
+    {
+      "keywords": ["порно", "порн", "porn", "porno", "porns"],
+      "response": null,
+      "media": "media/mems/porn/",
       "delete_message": false
     }
   ]
