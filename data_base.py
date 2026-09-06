@@ -69,24 +69,23 @@ def init_database():
 
 def add_reputation(user_id, points, by_moderator=False):
     """Добавляем репутацию"""
-    uid = str(user_id)
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.cursor()
 
-    if by_moderator:
-        cursor.execute("SELECT reputation_moderator FROM users WHERE user_id = ?", (uid,))
-        row = cursor.fetchone()
-        if row:
-            new_rep = row[0] + points
-            cursor.execute("UPDATE users SET reputation_moderator = ? WHERE user_id = ?", (new_rep, uid))
-    else:
-        cursor.execute("SELECT reputation_user FROM users WHERE user_id = ?", (uid,))
-        row = cursor.fetchone()
-        if row:
-            new_rep = row[0] + points
-            cursor.execute("UPDATE users SET reputation_user = ? WHERE user_id = ?", (new_rep, uid))
+    rep_column = "reputation_moderator" if by_moderator else "reputation_user"
 
-    conn.commit()
+    cursor.execute(f"SELECT {rep_column} FROM users WHERE user_id = ?", (user_id,))
+    row = cursor.fetchone()
+
+    if row:
+        old_rep = row[0]
+        new_rep = old_rep + points
+        logger.info(f"User {user_id}: {rep_column} {old_rep} → {new_rep}")
+        cursor.execute(f"UPDATE users SET {rep_column} = ? WHERE user_id = ?", (new_rep, user_id))
+        conn.commit()
+    else:
+        logger.warning(f"User {user_id} not found in database")
+
     conn.close()
 
 
@@ -188,7 +187,7 @@ def load_replacements(filepath):
                 if key:
                     replacements.append((key, val))
 
-    except Exception as e:
+    except:
         logger.exception(f"Ошибка загрузки замены символов")
 
     return tuple(replacements)

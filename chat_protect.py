@@ -15,7 +15,7 @@ from telebot import apihelper
 from telebot.async_telebot import AsyncTeleBot
 from telebot import types
 # Работа с базой данных
-import datetime
+from datetime import datetime, timedelta
 import os
 import sqlite3
 # Переподключения
@@ -29,9 +29,11 @@ from data_base import init_database, load_list_from_file, load_replacements, ban
 from create_backups import schedule_backups
 # Импорт основной конфигурации
 from config import TOKEN, LOGGING, DEBUG_MODE, LOG_DIR, USE_PROXY, PROXY_URL, UNBAN_OWNER, ADMIN_ID, ENABLE_CHECK_IP, \
-    VIOLATIONS_FOR_CHANGE_MODIFICATOR, DEBUG_CHECK_TEXT, DEBUG_JOKES, BOT_ID
+    VIOLATIONS_FOR_CHANGE_MODIFICATOR, DEBUG_CHECK_TEXT, DEBUG_JOKES, BOT_ID, REPORT_DIR
 # Импорт данных о базе данных
 from config import DATABASE_FILE, BAD_WORDS_FILE, REPLACEMENTS_FILE, MODERATORS_FILE, ENABLE_JOKES, MEDIA_DIR
+# Импорт данных для /reputation_constants
+from config import MAX_VIOLATIONS, VIOLATION_POINTS_MULTIPLIER, REP_USER_DIVISOR, REP_MODERATOR_DIVISOR
 # Импорт стандартных функций
 from system_functions import is_moderator, get_user_data, extract_target_user_id, data, is_user_or_ip_banned, get_ip_address, add_mute, get_user_name
 # Импорт шуток
@@ -41,7 +43,7 @@ from text_handler import messages_handler
 # Локализация
 from languages import l
 
-chat_protect_version = "1.1.1 Alpha"
+chat_protect_version = "1.2.12 Alpha"
 
 # Глобальный флаг для остановки бота
 stop_event = asyncio.Event()
@@ -50,7 +52,7 @@ should_stop = False
 # Логирование
 if LOGGING:
     os.makedirs(LOG_DIR, exist_ok=True)
-    logger.add(f"{LOG_DIR}/{datetime.datetime.now().strftime("%d-%m-%Y")}.txt", rotation="00:00")
+    logger.add(f"{LOG_DIR}/{datetime.now().strftime("%d-%m-%Y")}.txt", rotation="00:00")
 
 # Инициализируем SQLite базу
 init_database()
@@ -76,8 +78,7 @@ async def handle_help(message):
 
 @bot.message_handler(commands=["status"])
 async def handle_status(message):
-    done = message.chat.type == "private" and await is_moderator(bot, message.from_user.id)
-    if not done:
+    if message.chat.type == "private" and not await is_moderator(bot, message.from_user.id):
         return
 
     conn = sqlite3.connect(DATABASE_FILE)
@@ -86,7 +87,7 @@ async def handle_status(message):
     user_count = cursor.fetchone()[0]
     conn.close()
 
-    if done:
+    if message.chat.type == "private" and await is_moderator(bot, message.from_user.id):
         status_text = \
 f"""{l("bot_status")}:
 {l("bot_active")}
@@ -109,6 +110,52 @@ async def handle_status(message):
 
 
 
+@bot.message_handler(commands=["rules"])
+async def handle_status(message):
+    if message.chat.type == "private":
+        return
+    await bot.reply_to(message, l("bot_rules"))
+
+
+
+@bot.message_handler(commands=["reputation_constants"])
+async def handle_status(message):
+    if message.chat.type == "private":
+        return
+    await bot.reply_to(message, f"""{l("reputation_constants")}
+{l("points_to_mute")}: {MAX_VIOLATIONS}
+1 {l("violations_is_equal")} {VIOLATION_POINTS_MULTIPLIER} {l("points")}
+{REP_USER_DIVISOR} {l("points")} {l("user_rep")} -1 {l("violations")}
+{REP_MODERATOR_DIVISOR} {l("points")} {l("moder_rep")} -1 {l("violations")}""")
+
+
+
+@bot.message_handler(commands=["report"])
+async def handle_status(message):
+    if message.chat.type == "private":
+        return
+
+    try:
+        user_id = message.from_user.id
+        current_datetime = datetime.now().strftime("%d, %m, %Y_%H-%M-%S")
+
+        # Извлекаем текст после команды /report
+        text_after_command = message.text.split(maxsplit=1)
+        report_text = text_after_command[1] if len(text_after_command) > 1 else ""
+
+        os.makedirs(REPORT_DIR, exist_ok=True)
+        # Записываем в файл
+        with open(f"{REPORT_DIR}{user_id}_{current_datetime}.txt", "w", encoding="utf-8") as f:
+            f.write(report_text)
+
+        await bot.reply_to(message, "Ваше обращение успешно зарегистрировано")
+
+    except:
+        logger.exception(l("report_error"))
+        await bot.reply_to(message, l("report_error"))
+
+
+
 @bot.message_handler(commands=["data"])
 async def handle_data(message):
     if message.chat.type == "private" and not await is_moderator(bot, message.from_user.id):
@@ -122,19 +169,22 @@ async def handle_rep(message):
     if message.chat.type == "private":
         return
 
-    args = message.text.split()
-    user_id = extract_target_user_id(bot, message, args)
+    args = message.text.split()[1:]
+    logger.info(f"Command args: {args}")  # Добавьте этот лог
+
+    user_id = await extract_target_user_id(bot, message, args if args else None)
+
+    if user_id is None:
+        await bot.reply_to(message, l("user_not_found"))
+        return
+
+    if message.from_user.id == user_id:
+        return
 
     points = 1
-    if len(args) >= 2:
+    if len(args) >= 1:
         try:
-            points = int(args[1])
-        except ValueError:
-            await bot.reply_to(message, l("need_a_number"))
-            return
-    elif len(args) >= 3:
-        try:
-            points = int(args[2])
+            points = int(args[0])
         except ValueError:
             await bot.reply_to(message, l("need_a_number"))
             return
@@ -143,8 +193,10 @@ async def handle_rep(message):
 
     user_name = await get_user_name(bot, user_id)
     user_data = get_user_data(user_id)
-    logger.success(f'{l("added")} {points} {l("rep_points")} {l("for_user")} {user_name} ({user_id}). {l("all")}: {user_data["reputation"]["moderator"]}')
-    await bot.reply_to(message, f'{l("added")} {points} {l("rep_points")} {l("for_user")} {user_name} ({user_id}). {l("all")}: {user_data["reputation"]["moderator"]}')
+    logger.success(
+        f'{l("added")} {points} {l("rep_points")} {l("for_user")} {user_name} ({user_id}). {l("all")}: {user_data["reputation"]["moderator"]}')
+    await bot.reply_to(message,
+                       f'{l("added")} {points} {l("rep_points")} {l("for_user")} {user_name} ({user_id}). {l("all")}: {user_data["reputation"]["moderator"]}')
     if ENABLE_JOKES:
         if user_id == BOT_ID:
             await send_audio_reply(bot, message, get_media_file_path(rf"{MEDIA_DIR}/rep_bot/"))
@@ -157,7 +209,7 @@ async def handle_minus_rep(message):
         return
 
     args = message.text.split()
-    user_id = extract_target_user_id(bot, message, args)
+    user_id = await extract_target_user_id(bot, message, args)
 
     points = 10
     if len(args) >= 3:
@@ -182,7 +234,7 @@ async def handle_mute(message):
         return
 
     args = message.text.split()
-    user_id = extract_target_user_id(bot, message, args)
+    user_id = await extract_target_user_id(bot, message, args)
 
     duration_minutes = 30
     if len(args) >= 3:
@@ -192,7 +244,7 @@ async def handle_mute(message):
             await bot.reply_to(message, l("need_a_number"))
             return
 
-    mute_until = datetime.datetime.now() + datetime.timedelta(minutes=duration_minutes)
+    mute_until = datetime.now() + timedelta(minutes=duration_minutes)
 
     # Записываем мут в БД
     add_mute(user_id, mute_until)
@@ -222,7 +274,7 @@ async def handle_unmute(message):
         return
 
     args = message.text.split()
-    user_id = extract_target_user_id(bot, message, args)
+    user_id = await extract_target_user_id(bot, message, args)
 
     uid = str(user_id)
     conn = sqlite3.connect(DATABASE_FILE)
@@ -298,7 +350,10 @@ async def handle_clear(message):
         return
 
     args = message.text.split()
-    user_id = extract_target_user_id(bot, message, args)
+
+    if len(args) < 2:
+        await bot.reply_to(message, l("need_a_number"))
+        return
 
     try:
         violations_to_remove = int(args[-1])
@@ -310,13 +365,16 @@ async def handle_clear(message):
         await bot.reply_to(message, l("number_must_more_0"))
         return
 
+    target_args = [] if len(args) == 2 else args[1:-1]
+    user_id = await extract_target_user_id(bot, message, target_args)
+
     user_data = get_user_data(user_id)
     current_violations = user_data["violations"]
 
     if violations_to_remove > current_violations:
         await bot.reply_to(
             message,
-            f'{l("remove_error")} {violations_to_remove} {l("violations")}.'
+            f'{l("remove_error")} {violations_to_remove} {l("violations")}. '
             f'{l("the_user_has")} {l("only")} {current_violations} {l("violations")}.'
         )
         return

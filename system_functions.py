@@ -7,7 +7,7 @@
 # Или в файле COPYING.txt в репозитории или архиве
 # Copyleft 🄯 NEO Organization, Departament K 2026
 # Coded by AnonimNEO (GitHub)
-
+from _testcapi import awaitType
 # Telegram API
 from telebot import types
 # Логирование
@@ -72,40 +72,47 @@ def get_user_data(user_id):
     }
 
 
-
-def extract_target_user_id(bot, message, args=None):
+async def extract_target_user_id(bot, message, args=None):
     """Извлекает ID целевого пользователя из:
     1. Reply (ответ на сообщение)
     2. Числового аргумента (user_id)
     3. @username (через get_chat)
     4. Текущего пользователя (если ничего не передано)"""
 
-    # Если это reply, берём ID из него
-    if message.reply_to_message:
-        return int(message.reply_to_message.from_user.id)
+    logger.info(f"extract_target_user_id called: args={args}, reply={message.reply_to_message is not None}")
 
-    # Если есть аргумент, пытаемся получить ID из него
-    if args and len(args) >= 2:
-        arg = args[1].strip()
+    if args is None:
+        args = []
 
+    # 1. Аргументы
+    if args:
+        arg = args[0].strip()
+        logger.info(f"Processing arg: {arg}")
         try:
-            # Пробуем преобразовать в число (если это просто ID)
             target_user_id = int(arg)
+            logger.info(f"Parsed as ID: {target_user_id}")
             return target_user_id
         except ValueError:
-            # Если это не число, то возможно @username
             try:
-                chat = bot.get_chat(arg)
+                chat = await bot.get_chat(arg)
+                logger.info(f"Found via @username: {chat.id}")
                 return int(chat.id)
-            except:
-                if DEBUG_MODE:
-                    logger.exception(f'{l("user_not_found")} {arg}')
-                # Возвращаем текущего пользователя как fallback
-                return int(message.from_user.id)
+            except Exception as e:
+                logger.exception(f"Failed to find user: {arg}")
+                return None
 
-    # Если ничего нет, берём ID текущего пользователя
-    return int(message.from_user.id)
+    if message.reply_to_message:
+        replied_user_id = message.reply_to_message.from_user.id
+        # Игнорируем reply от самого бота или GroupAnonymousBot
+        if replied_user_id not in [BOT_ID, 1087968824]:
+            logger.info(f"Using reply target: {replied_user_id}")
+            return replied_user_id
 
+    # 3. Текущий пользователь
+    current_user_id = int(message.from_user.id)
+    current_user_name = message.from_user.username or "unknown"
+    logger.info(f"✓ FALLBACK: Using current user: {current_user_id}, username={current_user_name}")
+    return current_user_id
 
 
 # Проверяем является ли пользователь модератором
@@ -116,7 +123,7 @@ async def is_moderator(bot, user_id):
     except:
         username = None
 
-    if str(user_id) == MODERATORS_IDS[0] or username == "GroupAnonymousBot":
+    if str(user_id) == MODERATORS_IDS[0] or username == "@GroupAnonymousBot":
         return True
     return str(user_id) in MODERATORS_IDS
 
@@ -201,9 +208,14 @@ async def get_user_name(bot, user_id):
         first_name = chat.first_name
     except:
         user_name = None
-        first_name = l("user")
+        first_name = None
 
-    return f"@{user_name}" if user_name else first_name
+    if user_name:
+        return f"@{user_name}"
+    elif first_name:
+        return first_name
+    else:
+        return str(user_id)  # Возвращаем ID если нет имени
 
 
 
@@ -220,27 +232,14 @@ async def data(bot, message):
     if is_banned:
         return
 
-    args = message.text.split()
+    args = message.text.split()[1:]
+    target_user_id = await extract_target_user_id(bot, message, args if args else None)
+    print(target_user_id)
 
-    # Если это приватный чат
-    if message.chat.type == "private":
-        # Проверяем, является ли пользователь модератором
-        if not await is_moderator(bot, user_id):
-            return
-
-        # Используем extract_target_user_id для приватного чата
-        user_id = extract_target_user_id(bot, message, args)
-
-    else:
-        # В групповом чате обычная логика
-        user_id = extract_target_user_id(bot, message, args)
-
-    if user_id is None:
+    if target_user_id is None:
         await bot.reply_to(message, l("user_not_found"))
         return
 
-    # Получаем данные из новой БД
-    uid = str(user_id)
     try:
         conn = sqlite3.connect(DATABASE_FILE)
         cursor = conn.cursor()
@@ -248,7 +247,7 @@ async def data(bot, message):
             """SELECT entry_date, violations, reputation_user, reputation_moderator, 
                       message_count, delete_message_count, edited_message_count, is_banned 
                FROM users WHERE user_id = ?""",
-            (uid,)
+            (str(target_user_id),)
         )
         row = cursor.fetchone()
         conn.close()
@@ -258,7 +257,6 @@ async def data(bot, message):
             return
 
         entry_date, violations, rep_user, rep_mod, msg_count, del_msg_count, edited_msg_count, is_banned = row
-
     except:
         text = f'{l("get_user_info_error")} {user_id}'
         logger.exception(text)
@@ -266,47 +264,47 @@ async def data(bot, message):
         del text
         return
 
-    user_name = await get_user_name(bot, user_id)
+    user_name = await get_user_name(bot, target_user_id)
 
     # Определяем тип пользователя
-    if str(user_id) == ADMIN_ID or user_name == "GroupAnonymousBot":
+    if target_user_id == ADMIN_ID or user_name == "@GroupAnonymousBot":
         user_type = ADMIN_TYPE
         user_name = ADMIN_NAME
-    elif str(user_id) == BOT_ID:
+    elif target_user_id == BOT_ID:
         user_type = BOT_TYPE
         user_name = BOT_NAME
-    elif await is_moderator(bot, user_id):
+    elif await is_moderator(bot, target_user_id):
         user_type = l("moderator")
     else:
         user_type = l("member")
 
-    if DEBUG_MODE and not (str(user_id) == ADMIN_ID or user_name == "GroupAnonymousBot" or str(
-            user_id) == BOT_ID):
-        user_name += f" ({user_id})"
+    if not (target_user_id == ADMIN_ID or user_name == "@GroupAnonymousBot" or target_user_id == BOT_ID):
+        user_name += f" ({target_user_id})"
 
     # Проверяем, забанен ли целевой пользователь
     if ENABLE_CHECK_IP:
-        ip = await get_ip_address(user_id)
-        target_ban_status = is_user_or_ip_banned(user_id, ip)
+        ip = await get_ip_address(target_user_id)
+        target_ban_status = is_user_or_ip_banned(target_user_id, ip)
     else:
-        target_ban_status = is_user_or_ip_banned(user_id)
+        target_ban_status = is_user_or_ip_banned(target_user_id)
 
     ban_text = ""
-    if target_ban_status or is_banned:
+    if target_ban_status:
         ban_text = f'{l("status")}: {l("is_banned")}\n\n'
 
     # Получаем информацию о мутах из старой системы (если она ещё используется)
     mutations_text = ""
+
+    print(f"target_user_id: {target_user_id} (type: {type(target_user_id)})")
+    print(f"violations in DB: {violations}")
+
     try:
-        user_data = get_user_data(user_id)
+        user_data = get_user_data(target_user_id)
+        print(f"user_data from get_user_data: {user_data}")
         if user_data.get("mutations"):
-            for i, mut in enumerate(user_data["mutations"], 1):
-                until = datetime.datetime.fromisoformat(mut["until"])
-                mutations_text += f"\n {i}. {l("to")}: {until.strftime("%Y-%m-%d %H:%M:%S")}"
-        else:
-            mutations_text = f'\n {l("no_mutes")}'
-    except:
-        mutations_text = f'\n {l("error")}'
+            print(f"mutations: {user_data['mutations']}")
+    except Exception as e:
+        print(f"get_user_data error: {e}")
 
     # Формируем ответ
     data_text = f"""{l("user_statistics")} {user_name}

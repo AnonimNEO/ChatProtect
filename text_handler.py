@@ -182,7 +182,7 @@ async def messages_handler(bot, message, changed=1):
         await user_punishment(bot, message, user_id, THIRD_STAGE_VIOLATION_MODIFICATOR * changed)
         return
 
-    await check_and_apply_mute(bot, user_id, text)
+    await check_and_apply_mute(bot, user_id, message)
 
     if ENABLE_JOKES:
         await handle_trigger_replies(message, bot, text)
