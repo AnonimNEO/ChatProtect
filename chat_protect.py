@@ -43,7 +43,7 @@ from text_handler import messages_handler
 # Локализация
 from languages import l
 
-chat_protect_version = "1.3.28 Alpha"
+chat_protect_version = "1.3.29 Alpha"
 
 # Глобальный флаг для остановки бота
 stop_event = asyncio.Event()
@@ -169,12 +169,10 @@ async def handle_rep(message):
     if message.chat.type == "private":
         return
 
-    user_id = message.from_user.id
-    user_name = await get_user_name(bot, user_id)
-
-    is_moder = await is_moderator(bot, user_id)
+    is_moder = await is_moderator(bot, message.from_user.id)
 
     target_user_id, points = await extract_target_user_id(bot, message, False)
+    user_name = await get_user_name(bot, target_user_id)
 
     if target_user_id is None:
         return
@@ -199,12 +197,10 @@ async def handle_minus_rep(message):
     if message.chat.type == "private":
         return
 
-    user_id = message.from_user.id
-    user_name = await get_user_name(bot, user_id)
-
-    is_moder = await is_moderator(bot, user_id)
+    is_moder = await is_moderator(bot, message.from_user.id)
 
     target_user_id, points = await extract_target_user_id(bot, message, False)
+    user_name = await get_user_name(bot, target_user_id)
 
     if target_user_id is None:
         return
@@ -217,7 +213,7 @@ async def handle_minus_rep(message):
 
     user_data = get_user_data(target_user_id)
     logger.success(f'{l("removed")} {points} {l("rep_points")} {l("for_user")} {target_user_id}. {l("all")}: {user_data["reputation"]["moderator"]}')
-    await bot.reply_to(message, f'✅ {l("removed")} {points} {l("rep_points")} {l("for_user")} {user_name} ({user_id}). {l("all")}: {user_data["reputation"]["moderator"]}')
+    await bot.reply_to(message, f'✅ {l("removed")} {points} {l("rep_points")} {l("for_user")} {user_name} ({target_user_id}). {l("all")}: {user_data["reputation"]["moderator"]}')
 
 
 
@@ -225,13 +221,11 @@ async def handle_minus_rep(message):
 async def handle_mute(message):
     if message.chat.type == "private":
         return
-    user_id = message.from_user.id
-    if not await is_moderator(bot, user_id):
+    if not await is_moderator(bot, message.from_user.id):
         return
 
-    user_name = await get_user_name(bot, user_id)
-
     target_user_id, points = await extract_target_user_id(bot, message, False)
+    user_name = await get_user_name(bot, target_user_id)
 
     if target_user_id is None:
         return
@@ -264,13 +258,11 @@ async def handle_mute(message):
 async def handle_unmute(message):
     if message.chat.type == "private":
         return
-    user_id = message.from_user.id
-    if not await is_moderator(bot, user_id):
+    if not await is_moderator(bot, message.from_user.id):
         return
 
-    user_name = await get_user_name(bot, user_id)
-
     target_user_id, points = await extract_target_user_id(bot, message, False)
+    user_name = await get_user_name(bot, target_user_id)
 
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.cursor()
@@ -283,7 +275,7 @@ async def handle_unmute(message):
     try:
         await bot.restrict_chat_member(
             chat_id=message.chat.id,
-            user_id=user_id,
+            user_id=target_user_id,
             permissions=types.ChatPermissions(can_send_messages=True)
         )
         logger.success(f"{l("user")} {target_user_id} {l("unmuted")}")
@@ -349,12 +341,11 @@ async def handle_unban(message):
 async def handle_clear(message):
     if message.chat.type == "private":
         return
-    user_id = message.from_user.id
-    if not await is_moderator(bot, user_id):
+    if not await is_moderator(bot, message.from_user.id):
         return
 
-    user_name = await get_user_name(bot, user_id)
     target_user_id, points = await extract_target_user_id(bot, message, False)
+    user_name = await get_user_name(bot, target_user_id)
 
     user_data = get_user_data(target_user_id)
     current_violations = user_data["violations"]
