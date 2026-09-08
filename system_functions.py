@@ -7,7 +7,7 @@
 # Или в файле COPYING.txt в репозитории или архиве
 # Copyleft 🄯 NEO Organization, Departament K 2026
 # Coded by AnonimNEO (GitHub)
-from _testcapi import awaitType
+
 # Telegram API
 from telebot import types
 # Логирование
@@ -36,25 +36,24 @@ user_message_times = {}
 
 def get_user_data(user_id):
     """Получаем данные о пользователе из SQLite"""
-    uid = str(user_id)
     conn = sqlite3.connect(DATABASE_FILE)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
-    cursor.execute("SELECT * FROM users WHERE user_id = ?", (uid,))
+    cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
     row = cursor.fetchone()
 
     if not row:
         cursor.execute("""
             INSERT INTO users (user_id, entry_date, violations, reputation_user, reputation_moderator, message_count, delete_message_count)
             VALUES (?, ?, 0, 0, 0, 0, 0)
-        """, (uid, "Н/Д"))
+        """, (user_id, "Н/Д"))
         conn.commit()
 
-        cursor.execute("SELECT * FROM users WHERE user_id = ?", (uid,))
+        cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
         row = cursor.fetchone()
 
-    cursor.execute("SELECT date, until FROM mutations WHERE user_id = ?", (uid,))
+    cursor.execute("SELECT date, until FROM mutations WHERE user_id = ?", (user_id,))
     mutations = [{"date": m[0], "until": m[1]} for m in cursor.fetchall()]
     conn.close()
 
@@ -72,65 +71,109 @@ def get_user_data(user_id):
     }
 
 
-async def extract_target_user_id(bot, message, args=None):
-    """Извлекает ID целевого пользователя из:
-    1. Reply (ответ на сообщение)
-    2. Числового аргумента (user_id)
-    3. @username (через get_chat)
-    4. Текущего пользователя (если ничего не передано)"""
 
-    logger.info(f"extract_target_user_id called: args={args}, reply={message.reply_to_message is not None}")
+async def extract_target_user_id(bot, message, GET_FROM_USER=True):
+    """Парсит команду извлекая user_id и points.
 
-    if args is None:
-        args = []
+    Порядок обработки user_id:
+    1) Reply на сообщение ПОЛЬЗОВАТЕЛЯ
+    2) Аргумент (@username или @user_id или числовой ID)
+    3) Текущий пользователь (если GET_FROM_USER=True)
+    4) None с ошибкой (если GET_FROM_USER=False)
 
-    # 1. Аргументы
+    points - последний аргумент, преобразованный в число (или None)
+
+    Returns:
+        int: (user_id, points) или (None, None) при ошибке"""
+    args = message.text.split()[1:]
+    user_id = None
+    points = None
+
+    # Парсим points (последний аргумент)
+    if args:
+        try:
+            points = int(args[-1])
+            args = args[:-1] # Убираем последний аргумент из списка
+        except ValueError:
+            # Последний аргумент — не число, значит это часть user_id
+            pass
+
+    # Парсим user_id
+
+    # 1) Reply на ПОЛЬЗОВАТЕЛЬСКОЕ сообщение
+    if message.reply_to_message and message.reply_to_message.from_user:
+        replied_user_id = message.reply_to_message.from_user.id
+        # Игнорируем системные аккаунты
+        if replied_user_id not in [BOT_ID, 1087968824]:
+            user_id = replied_user_id
+            if DEBUG_MODE:
+                logger.debug(f"user_id from reply = {user_id}")
+            return user_id, points
+
+    # 2) Аргумент (@username, @user_id или числовой ID)
     if args:
         arg = args[0].strip()
-        logger.info(f"Processing arg: {arg}")
-        try:
-            target_user_id = int(arg)
-            logger.info(f"Parsed as ID: {target_user_id}")
-            return target_user_id
-        except ValueError:
+
+        # Если аргумент начинается с @
+        if arg.startswith("@"):
+            arg = arg[1:] # Убираем @
+
+            # Пытаемся преобразовать в int (если это @user_id)
             try:
-                chat = await bot.get_chat(arg)
-                logger.info(f"Found via @username: {chat.id}")
-                return int(chat.id)
-            except Exception as e:
-                logger.exception(f"Failed to find user: {arg}")
-                return None
+                user_id = int(arg)
+                if DEBUG_MODE:
+                    logger.debug(f"user_id from @user_id = {user_id}")
+                return user_id, points
+            except ValueError:
+                # Это @username, ищем через get_chat
+                try:
+                    chat = await bot.get_chat(arg)
+                    user_id = int(chat.id)
+                    if DEBUG_MODE:
+                        logger.debug(f"user_id from @username = {user_id}")
+                    return user_id, points
+                except:
+                    logger.exception(f"user not found by @username: {arg}")
+                    await message.reply(l("user_not_found"))
+                    return None, None
+        else:
+            # Пытаемся преобразовать в int напрямую
+            try:
+                user_id = int(arg)
+                if DEBUG_MODE:
+                    logger.debug(f"user_id from numeric arg = {user_id}")
+                return user_id, points
+            except ValueError:
+                (logger.exception(f"invalid argument format: {arg}"))
+                await message.reply(l("user_not_found"))
+                return None, None
 
-    if message.reply_to_message:
-        replied_user_id = message.reply_to_message.from_user.id
-        # Игнорируем reply от самого бота или GroupAnonymousBot
-        if replied_user_id not in [BOT_ID, 1087968824]:
-            logger.info(f"Using reply target: {replied_user_id}")
-            return replied_user_id
+    # 3) Текущий пользователь (если GET_FROM_USER=True)
+    if GET_FROM_USER:
+        user_id = int(message.from_user.id)
+        if DEBUG_MODE:
+            logger.debug(f"user_id from current user = {user_id}")
+        return user_id, points
 
-    # 3. Текущий пользователь
-    current_user_id = int(message.from_user.id)
-    current_user_name = message.from_user.username or "unknown"
-    logger.info(f"✓ FALLBACK: Using current user: {current_user_id}, username={current_user_name}")
-    return current_user_id
+    # 4) Ошибка (если GET_FROM_USER=False и user_id не найден)
+    logger.warning("user not found and GET_FROM_USER=False")
+    await message.reply(l("user_not_found"))
+    return None, None
+
 
 
 # Проверяем является ли пользователь модератором
-async def is_moderator(bot, user_id):
-    try:
-        chat = await bot.get_chat(user_id)
-        username = chat.username
-    except:
-        username = None
+async def is_moderator(bot, user_id: int):
+    user_name = await get_user_name(bot, user_id)
 
-    if str(user_id) == MODERATORS_IDS[0] or username == "@GroupAnonymousBot":
+    if user_id == MODERATORS_IDS[0] or user_name == "@GroupAnonymousBot":
         return True
-    return str(user_id) in MODERATORS_IDS
+    return user_id in MODERATORS_IDS
 
 
 
 # Проверка на мут
-async def is_user_muted(bot, user_id):
+async def is_user_muted(bot, user_id: int):
     if await is_moderator(bot, user_id):
         return False
 
@@ -147,38 +190,36 @@ async def is_user_muted(bot, user_id):
 
 
 # Обновляем количество сообщений за минуту
-def add_timestamps(user_id):
-    user_id_str = str(user_id)
+def add_timestamps(user_id: int):
     now = time.time()
 
-    if user_id_str not in user_message_times:
-        user_message_times[user_id_str] = []
+    if user_id not in user_message_times:
+        user_message_times[user_id] = []
 
     # Добавляем новый timestamp
-    user_message_times[user_id_str].append(now)
+    user_message_times[user_id].append(now)
 
     # Удаляем сообщения старше 60 секунд
-    user_message_times[user_id_str] = [
-        ts for ts in user_message_times[user_id_str]
+    user_message_times[user_id] = [
+        ts for ts in user_message_times[user_id]
         if now - ts < 60
     ]
 
     # Удаляем пустые записи из словаря
-    if not user_message_times[user_id_str]:
-        del user_message_times[user_id_str]
+    if not user_message_times[user_id]:
+        del user_message_times[user_id]
 
 
 
 # Добавляем нарушение
 def add_violation(user_id, count=1):
     """Добавить нарушение пользователю"""
-    uid = str(user_id)
     try:
         conn = sqlite3.connect(DATABASE_FILE)
         cursor = conn.cursor()
         cursor.execute(
             "UPDATE users SET violations = violations + ? WHERE user_id = ?",
-            (count, uid)
+            (count, user_id)
         )
         conn.commit()
         conn.close()
@@ -188,7 +229,7 @@ def add_violation(user_id, count=1):
 
 
 # Получаем очки нарушений
-def get_total_points(user_id):
+def get_total_points(user_id: int):
     user_data = get_user_data(user_id)
     violation_points = user_data["violations"]
     rep_user_points = user_data["reputation"]["user"]
@@ -201,7 +242,7 @@ def get_total_points(user_id):
 
 
 
-async def get_user_name(bot, user_id):
+async def get_user_name(bot, user_id: int):
     try:
         chat = await bot.get_chat(user_id)
         user_name = chat.username
@@ -215,26 +256,13 @@ async def get_user_name(bot, user_id):
     elif first_name:
         return first_name
     else:
-        return str(user_id)  # Возвращаем ID если нет имени
+        return user_id # Возвращаем ID если нет имени
 
 
 
 async def data(bot, message):
-    user_id = message.from_user.id
-
-    # Комплексная проверка бана
-    if ENABLE_CHECK_IP:
-        ip = await get_ip_address(user_id)
-        is_banned = is_user_or_ip_banned(user_id, ip)
-    else:
-        is_banned = is_user_or_ip_banned(user_id)
-
-    if is_banned:
-        return
-
-    args = message.text.split()[1:]
-    target_user_id = await extract_target_user_id(bot, message, args if args else None)
-    print(target_user_id)
+    target_user_id, points = await extract_target_user_id(bot, message, True)
+    user_name = await get_user_name(bot, target_user_id)
 
     if target_user_id is None:
         await bot.reply_to(message, l("user_not_found"))
@@ -253,18 +281,16 @@ async def data(bot, message):
         conn.close()
 
         if row is None:
-            await bot.reply_to(message, f'❌ {l("user_not_found")} {user_id}')
+            await bot.reply_to(message, f'❌ {l("user_not_found")} {user_name} ({target_user_id})')
             return
 
         entry_date, violations, rep_user, rep_mod, msg_count, del_msg_count, edited_msg_count, is_banned = row
     except:
-        text = f'{l("get_user_info_error")} {user_id}'
-        logger.exception(text)
-        await bot.reply_to(message, text)
+        text = f'{l("get_user_info_error")}'
+        logger.exception(f'{text} {target_user_id}')
+        await bot.reply_to(message, f'{text} {user_name} ({target_user_id})')
         del text
         return
-
-    user_name = await get_user_name(bot, target_user_id)
 
     # Определяем тип пользователя
     if target_user_id == ADMIN_ID or user_name == "@GroupAnonymousBot":
@@ -295,17 +321,6 @@ async def data(bot, message):
     # Получаем информацию о мутах из старой системы (если она ещё используется)
     mutations_text = ""
 
-    print(f"target_user_id: {target_user_id} (type: {type(target_user_id)})")
-    print(f"violations in DB: {violations}")
-
-    try:
-        user_data = get_user_data(target_user_id)
-        print(f"user_data from get_user_data: {user_data}")
-        if user_data.get("mutations"):
-            print(f"mutations: {user_data['mutations']}")
-    except Exception as e:
-        print(f"get_user_data error: {e}")
-
     # Формируем ответ
     data_text = f"""{l("user_statistics")} {user_name}
 {l("user_type")}: {user_type}
@@ -320,34 +335,34 @@ async def data(bot, message):
 
 {l("mutes")}: {mutations_text}"""
     await bot.reply_to(message, data_text)
+    del data_text
 
 
 
 def add_mute(user_id, mute_until):
     """Добавляем мут"""
-    uid = str(user_id)
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.cursor()
 
     cursor.execute("""
                 INSERT INTO mutations (user_id, date, until) 
                 VALUES (?, ?, ?)
-            """, (uid, datetime.datetime.now().isoformat(), mute_until.isoformat()))
+            """, (user_id, datetime.datetime.now().isoformat(), mute_until.isoformat()))
 
     if MINUS_MODERATOR_REP_WHEN_MUTING:
         # Вычитаем COUNT_MINUS_MODERATOR_REP очков репутации модератора
-        cursor.execute("SELECT reputation_moderator FROM users WHERE user_id = ?", (uid,))
+        cursor.execute("SELECT reputation_moderator FROM users WHERE user_id = ?", (user_id,))
         row = cursor.fetchone()
         if row:
             new_rep = max(0, row[0] - COUNT_MINUS_MODERATOR_REP)
-            cursor.execute("UPDATE users SET reputation_moderator = ? WHERE user_id = ?", (new_rep, uid))
+            cursor.execute("UPDATE users SET reputation_moderator = ? WHERE user_id = ?", (new_rep, user_id))
 
     # Снимаем MAX_VIOLATIONS нарушений
-    cursor.execute("SELECT violations FROM users WHERE user_id = ?", (uid,))
+    cursor.execute("SELECT violations FROM users WHERE user_id = ?", (user_id,))
     row = cursor.fetchone()
     if row:
         new_violations = max(0, row[0] - MAX_VIOLATIONS)
-        cursor.execute("UPDATE users SET violations = ? WHERE user_id = ?", (new_violations, uid))
+        cursor.execute("UPDATE users SET violations = ? WHERE user_id = ?", (new_violations, user_id))
 
     conn.commit()
     conn.close()
@@ -404,7 +419,7 @@ async def check_and_apply_mute(bot, user_id, message):
 
 
 
-async def get_ip_address(user_id):
+async def get_ip_address(user_id: int):
     """Получаем IP пользователя"""
     try:
         loop = asyncio.get_event_loop()

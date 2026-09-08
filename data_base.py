@@ -25,7 +25,7 @@ def init_database():
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.cursor()
 
-    # Существующая таблица users
+    # Таблица users с INTEGER для user_id
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
@@ -40,7 +40,7 @@ def init_database():
         )
     """)
 
-    # Новая таблица для отслеживания IP и банов
+    # Таблица для отслеживания IP и банов
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS violators (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -51,7 +51,7 @@ def init_database():
         )
     """)
 
-    # Таблица связей IP и ID (для быстрого поиска)
+    # Таблица связей IP и ID
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS ip_user_mapping (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -84,7 +84,7 @@ def add_reputation(user_id, points, by_moderator=False):
         cursor.execute(f"UPDATE users SET {rep_column} = ? WHERE user_id = ?", (new_rep, user_id))
         conn.commit()
     else:
-        logger.warning(f"User {user_id} not found in database")
+        logger.warning(f'{l("user_not_found")} {user_id}')
 
     conn.close()
 
@@ -92,54 +92,52 @@ def add_reputation(user_id, points, by_moderator=False):
 
 def subtract_reputation(user_id, points, by_moderator=False):
     """Уменьшаем репутацию"""
-    uid = str(user_id)
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.cursor()
 
     if by_moderator:
-        cursor.execute("SELECT reputation_moderator FROM users WHERE user_id = ?", (uid,))
+        cursor.execute("SELECT reputation_moderator FROM users WHERE user_id = ?", (user_id,))
         row = cursor.fetchone()
         if row:
             new_rep = max(0, row[0] - points)
-            cursor.execute("UPDATE users SET reputation_moderator = ? WHERE user_id = ?", (new_rep, uid))
+            cursor.execute("UPDATE users SET reputation_moderator = ? WHERE user_id = ?", (new_rep, user_id))
     else:
-        cursor.execute("SELECT reputation_user FROM users WHERE user_id = ?", (uid,))
+        cursor.execute("SELECT reputation_user FROM users WHERE user_id = ?", (user_id,))
         row = cursor.fetchone()
         if row:
             new_rep = max(0, row[0] - points)
-            cursor.execute("UPDATE users SET reputation_user = ? WHERE user_id = ?", (new_rep, uid))
+            cursor.execute("UPDATE users SET reputation_user = ? WHERE user_id = ?", (new_rep, user_id))
 
     conn.commit()
     conn.close()
 
 
 
-def remove_mutation(user_id):
+def remove_mutation(user_id: int):
     """Удаляем мут"""
-    uid = str(user_id)
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.cursor()
     now = datetime.datetime.now().isoformat()
 
-    cursor.execute("DELETE FROM mutations WHERE user_id = ? AND until <= ?", (uid, now))
+    cursor.execute("DELETE FROM mutations WHERE user_id = ? AND until <= ?", (user_id, now))
 
     conn.commit()
     conn.close()
 
 
 
-def data_operation(uid, user_id, sql):
+def data_operation(user_id, sql):
     try:
         conn = sqlite3.connect(DATABASE_FILE)
         cursor = conn.cursor()
         cursor.execute(
             sql,
-            (uid,)
+            (user_id,)
         )
         conn.commit()
         conn.close()
     except:
-        logger.exception(f"Ошибка базы данных для пользователя {user_id} при команде:\n{sql}")
+        logger.exception(f'{l("data_base_error")} {user_id} {l("in_command")}:\n{sql}')
 
 
 
@@ -188,7 +186,7 @@ def load_replacements(filepath):
                     replacements.append((key, val))
 
     except:
-        logger.exception(f"Ошибка загрузки замены символов")
+        logger.exception(l("load_replacements_error"))
 
     return tuple(replacements)
 
@@ -215,9 +213,9 @@ def save_json(data, filepath):
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
         if DEBUG_MODE:
-            logger.debug(f"Данные сохранены в {filepath}")
+            logger.debug(f'{l("data_save_in")} {filepath}')
     except:
-        logger.exception(f"Ошибка сохранения {filepath}")
+        logger.exception(f'{l("save_error")} {filepath}')
 
 
 
@@ -278,7 +276,7 @@ def is_user_or_ip_banned(user_id, ip_address=None):
 
 
 
-def get_all_ips_for_user(user_id):
+def get_all_ips_for_user(user_id: int):
     """Получаем все IP, когда-либо использованные пользователем"""
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.cursor()
@@ -324,7 +322,7 @@ def unban_user(user_id=None, ip_address=None):
                 cursor.execute("DELETE FROM violators WHERE user_id = ?", (int(user_id),))
                 cursor.execute("UPDATE users SET is_banned = 0 WHERE user_id = ?", (int(user_id),))
                 conn.commit()
-                logger.info(f'{l("user")} {user_id} {l("unbanned")}.')
+                logger.success(f'{l("user")} {user_id} {l("unbanned")}.')
                 return True
             else:
                 return False
@@ -338,16 +336,16 @@ def unban_user(user_id=None, ip_address=None):
                 return False
 
             # Удаляем из violators всех пользователей на этом IP
-            for (uid,) in users_on_ip:
-                cursor.execute("DELETE FROM violators WHERE user_id = ?", (uid,))
-                cursor.execute("UPDATE users SET is_banned = 0 WHERE user_id = ?", (uid,))
+            for (user_id,) in users_on_ip:
+                cursor.execute("DELETE FROM violators WHERE user_id = ?", (user_id,))
+                cursor.execute("UPDATE users SET is_banned = 0 WHERE user_id = ?", (user_id,))
 
             unbanned_count = len(users_on_ip)
             conn.commit()
 
-            user_ids = [str(uid) for uid, in users_on_ip]
+            user_ids = [user_id for user_id, in users_on_ip]
 
-            logger.info(f"{l("unlock_al")} {unbanned_count} {l("users_on")} IP {ip_address}\nID: {", ".join(user_ids)}")
+            logger.success(f"{l("unlock_all")} {unbanned_count} {l("users_on")} IP {ip_address}\nID: {", ".join(user_ids)}")
             return True
         else:
             return False

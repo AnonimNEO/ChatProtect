@@ -115,20 +115,23 @@ def text_processing_stage_2(text):
 async def user_punishment(bot, message, user_id, count):
     await delete_messages(bot, message, user_id)
     if not await is_moderator(bot, user_id):
-        data_operation(str(user_id), user_id,"UPDATE users SET delete_message_count = delete_message_count + 1 WHERE user_id = ?")
+        data_operation(user_id,"UPDATE users SET delete_message_count = delete_message_count + 1 WHERE user_id = ?")
         add_violation(user_id, count)
 
 
 
 async def messages_handler(bot, message, changed=1):
     """Проверка сообщений"""
+    if not message.text:
+        return
+
     user_id = message.from_user.id
     text = message.text.lower()
 
     # Обновляем счетчик сообщений за текущую минуту
     add_timestamps(user_id)
     # Увеличиваем счётчик обычных сообщений
-    data_operation(str(user_id), user_id, "UPDATE users SET message_count = message_count + 1 WHERE user_id = ?")
+    data_operation(user_id, "UPDATE users SET message_count = message_count + 1 WHERE user_id = ?")
     user_data = get_user_data(user_id)
 
     if ENABLE_CHECK_IP:
@@ -141,7 +144,7 @@ async def messages_handler(bot, message, changed=1):
         return
 
     # Проверка спама
-    if len(user_message_times[str(user_id)]) > MAX_MESSAGES_IN_MINUTE:
+    if len(user_message_times[user_id]) > MAX_MESSAGES_IN_MINUTE:
         if DEBUG_CHECK_TEXT:
             logger.debug(f'{l("spam_detect")} {user_id}!')
         if ENABLE_BAN_USER_FOR_SPAM:

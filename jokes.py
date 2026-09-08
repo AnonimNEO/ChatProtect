@@ -23,7 +23,7 @@ from config import DEBUG_JOKES, DATABASE_FILE, CACHE_PAUSE
 # Импорт настроек для шуточных ответов
 from config import MEDIA_EXTENSIONS, AUDIO_EXTENSIONS, PHOTO_EXTENSIONS, VIDEO_EXTENSIONS, MEDIA_DIR, GREETINGS_FILE, TRIGGERS_FILE
 # Импорт из базы данных
-from data_base import load_json, ban_user
+from data_base import load_json
 # Локализация
 from languages import l
 
