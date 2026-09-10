@@ -43,7 +43,7 @@ from text_handler import messages_handler
 # Локализация
 from languages import l
 
-chat_protect_version = "1.4.0 Alpha"
+chat_protect_version = "1.4.1 Alpha"
 
 # Глобальный флаг для остановки бота
 stop_event = asyncio.Event()
@@ -78,7 +78,9 @@ async def handle_help(message):
 
 @bot.message_handler(commands=["status"])
 async def handle_status(message):
-    if message.chat.type == "private" and not await is_moderator(bot, message.from_user.id):
+    if message.chat.type == "private" and not DEBUG_MODE:
+        return
+    if not await is_moderator(bot, message.from_user.id):
         return
 
     conn = sqlite3.connect(DATABASE_FILE)
