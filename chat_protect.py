@@ -16,12 +16,15 @@ from telebot.async_telebot import AsyncTeleBot
 from telebot import types
 # Работа с базой данных
 from datetime import datetime, timedelta
-import os
-import sqlite3
-# Переподключения
 import requests
+import sqlite3
+import os
+# Переподключения
 import signal
+# Асинхронность
 import asyncio
+# Рандомные числа
+import random
 
 # База данных
 from data_base import init_database, load_list_from_file, load_replacements, ban_user, unban_user, add_reputation, subtract_reputation
@@ -29,7 +32,7 @@ from data_base import init_database, load_list_from_file, load_replacements, ban
 from create_backups import schedule_backups
 # Импорт основной конфигурации
 from config import TOKEN, LOGGING, DEBUG_MODE, LOG_DIR, USE_PROXY, PROXY_URL, UNBAN_OWNER, ADMIN_ID, ENABLE_CHECK_IP, \
-    VIOLATIONS_FOR_CHANGE_MODIFICATOR, DEBUG_CHECK_TEXT, DEBUG_JOKES, BOT_ID, REPORT_DIR
+    VIOLATIONS_FOR_CHANGE_MODIFICATOR, DEBUG_CHECK_TEXT, DEBUG_JOKES, BOT_ID, REPORT_DIR, EMOJI_OPTIONS, CAPTCHA_ATTEMPTS, ENABLE_CAPTCHA
 # Импорт данных о базе данных
 from config import DATABASE_FILE, BAD_WORDS_FILE, REPLACEMENTS_FILE, MODERATORS_FILE, ENABLE_JOKES, MEDIA_DIR
 # Импорт данных для /reputation_constants
@@ -43,11 +46,14 @@ from text_handler import messages_handler
 # Локализация
 from languages import l
 
-chat_protect_version = "1.4.1 Alpha"
+chat_protect_version = "1.5.4 Alpha"
 
 # Глобальный флаг для остановки бота
 stop_event = asyncio.Event()
 should_stop = False
+
+# Словарь для отслеживания попыток пользователей: {user_id: {attempt: int, type: str, data: dict}}
+user_captcha_attempts = {}
 
 # Логирование
 if LOGGING:
@@ -402,20 +408,186 @@ async def handle_cache_media(message):
 
 
 
+async def generate_emoji_captcha():
+    """Генерируем капчу с эмодзи"""
+    correct_emoji = random.choice(EMOJI_OPTIONS)
+    return {
+        "type": "emoji",
+        "correct": correct_emoji,
+        "message": f'{l("send_emoji")}: {correct_emoji}'
+    }
+
+
+
+async def generate_number():
+    n = random.randint(1000, 10000)
+    return {
+        "type": "code",
+        "correct": n,
+        "message": f'{l("send_code")}: {n}'
+    }
+
+
+
+async def generate_math_captcha():
+    """Генерируем математическую капчу"""
+    num1 = random.randint(1, 20)
+    num2 = random.randint(1, 20)
+    operation = random.choice(["+", "-", "*"])
+
+    if operation == "+":
+        answer = num1 + num2
+    elif operation == "-":
+        answer = num1 - num2
+    else: # *
+        answer = num1 * num2
+
+    return {
+        "type": "math",
+        "correct": str(answer),
+        "message": f'{l("send_result")}: {num1} {operation} {num2} = ?'
+    }
+
+
+
+async def get_random_captcha():
+    """Выбираем случайную капчу"""
+    captcha_gen = random.choice([
+        generate_emoji_captcha(),
+        generate_math_captcha(),
+        generate_number
+    ])
+    return await captcha_gen
+
+
+
+async def check_captcha_answer(user_id, answer):
+    """Проверяем ответ на капчу
+    Возвращает: (passed: bool, should_remove: bool)"""
+    if user_id not in user_captcha_attempts:
+        return False, False
+
+    attempt_data = user_captcha_attempts[user_id]
+    captcha_type = attempt_data["type"]
+
+    is_correct = False
+
+    if captcha_type == "emoji":
+        is_correct = answer == attempt_data["data"]["correct"]
+    elif captcha_type == "math":
+        is_correct = answer.strip() == attempt_data["data"]["correct"]
+    elif captcha_type == "code":
+        is_correct = answer == str(attempt_data["data"]["correct"])
+
+    if is_correct:
+        return True, True # Прошла капча, удалить данные
+
+    # Неправильный ответ, увеличиваем счётчик попыток
+    attempt_data["attempt"] += 1
+
+    if attempt_data["attempt"] >= CAPTCHA_ATTEMPTS:
+        return False, True # Не прошла и нужно удалить данные
+
+    return False, False # Не прошла, но попытки остались
+
+
+
 @bot.message_handler(content_types=["new_chat_members"])
 async def handle_new_member(message):
+    """Обработчик новых членов чата"""
     user_id = message.from_user.id
+    user_name = await get_user_name(bot, user_id)
+
+    # Проверка бана
     if ENABLE_CHECK_IP:
         ip = await get_ip_address(user_id)
         target_ban_status = is_user_or_ip_banned(user_id, ip)
     else:
         target_ban_status = is_user_or_ip_banned(user_id)
+
     if target_ban_status:
-        ban_user(user_id, await get_ip_address(user_id))
+        ban_user(user_id, await get_ip_address(user_id) if ENABLE_CHECK_IP else None)
         await bot.kick_chat_member(message.chat.id, user_id)
-        user_name = await get_user_name(bot, user_id)
-        await bot.send_message(message.chat.id,f'{l("user")} {user_name} ({user_id}) {l("user_banned_for_base")}.')
-    await new_member(bot, message)
+        await bot.send_message(
+            message.chat.id,
+            f'{l("user")} {user_name} ({user_id}) {l("user_banned_for_base")}.'
+        )
+        return
+
+    if ENABLE_CAPTCHA:
+        # Инициализируем попытку капчи
+        captcha = await get_random_captcha()
+        user_captcha_attempts[user_id] = {
+            "attempt": 0,
+            "type": captcha["type"],
+            "data": captcha,
+            "chat_id": message.chat.id
+        }
+
+        # Отправляем капчу
+        await bot.send_message(
+            message.chat.id,
+            f'{user_name}, {l("welcome_your_is_bot")}\n\n{captcha["message"]}',
+            reply_to_message_id=message.message_id
+        )
+
+    if ENABLE_JOKES:
+        await new_member(bot, message)
+
+
+
+@bot.message_handler(func=lambda msg: msg.from_user.id in user_captcha_attempts)
+async def handle_captcha_answer(message):
+    """Обработчик ответов на капчу"""
+    user_id = message.from_user.id
+
+    if user_id not in user_captcha_attempts:
+        return
+
+    attempt_data = user_captcha_attempts[user_id]
+    chat_id = attempt_data["chat_id"]
+    user_name = await get_user_name(bot, user_id)
+
+    # Проверяем ответ
+    passed, should_remove = await check_captcha_answer(user_id, message.text)
+
+    if passed:
+        # Капча пройдена успешно
+        await bot.send_message(
+            chat_id,
+            f'{user_name}, {l("welcome")}')
+        del user_captcha_attempts[user_id]
+
+    elif should_remove:
+        # Исчерпаны попытки
+        fail_count = attempt_data.get("fail_count", 1)
+
+        if -1 < fail_count < 3:
+            # Первый и второй раз - кик
+            await bot.kick_chat_member(chat_id, user_id)
+            await bot.send_message(
+                chat_id,
+                f'❌ {user_name} {l("was_kicked")}'
+            )
+        else:
+            # Третий раз - бан
+            ban_user(user_id, await get_ip_address(user_id))
+            await bot.kick_chat_member(chat_id, user_id)
+            await bot.send_message(
+                chat_id,
+                f'🚫 {user_name} {l("was_banned")}'
+            )
+
+        del user_captcha_attempts[user_id]
+
+    else:
+        # Осталось ещё попыток
+        remaining = CAPTCHA_ATTEMPTS - attempt_data["attempt"]
+        await bot.send_message(
+            chat_id,
+            f'❌ {l("wrong_send")} {remaining} {l("attempts")}.',
+            reply_to_message_id=message.message_id
+        )
 
 
 

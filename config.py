@@ -6,7 +6,7 @@ TOKEN = "" # Токен бота
 LOGGING = True # Включить логирование в файл?
 DEBUG_MODE = True # Включить режим отладки?
 DEBUG_CHECK_TEXT = True # Включить режим отладки для text_handler?
-DEBUG_JOKES = True # Включить отладку для jokes?
+DEBUG_JOKES = False # Включить отладку для jokes?
 
 # [В разработке] Настройки прокси
 USE_PROXY = False
@@ -17,10 +17,10 @@ PROXY_URL = ""
 # === Настройки уникальных данных в /data ===
 UNBAN_OWNER = True # Разблокировать создателя?
 ADMIN_ID = 0 # ID создателя (главного админа)
-ADMIN_TYPE = "" # Уникальный тип главного админа
-ADMIN_NAME = "" # Уникальное имя главного админа
+ADMIN_TYPE = "Создатель" # Уникальный тип главного админа
+ADMIN_NAME = "Создатель" # Уникальное имя главного админа
 BOT_ID = 0 # ID бота
-BOT_TYPE = "" # Уникальный тип бота
+BOT_TYPE = "Главный модератор" # Уникальный тип бота
 BOT_NAME = "" # Уникальное имя бота
 
 # === Настройки анти-спам системы ===
@@ -35,6 +35,9 @@ FIRST_STAGE_VIOLATION_MODIFICATOR = 1 # Сколько нарушений на 1
 SECOND_STAGE_VIOLATION_MODIFICATOR = 2 # Сколько нарушений на 2 этапе проверки
 THIRD_STAGE_VIOLATION_MODIFICATOR = 3 # Сколько нарушений на 3 этапе проверки
 VIOLATIONS_FOR_CHANGE_MODIFICATOR = 2 # Насколько умножить очки нарушений если сообщение было изменено
+ENABLE_CAPTCHA = True # Включить капчу для новых пользователей?
+CAPTCHA_ATTEMPTS = 2 # Попыток на решение капчи
+EMOJI_OPTIONS = ["😀", "😎", "🚀", "🎉", "👍", "🔥", "💯", "🐧", "🗿", "✅"] # Эмодзи для капчи
 
 # Константы для расчета очков репутации
 MAX_VIOLATIONS = 10 # Макс очков нарушений до мута
@@ -51,12 +54,13 @@ DATA_DIR = "data" # Каталог для базы данных
 LOG_DIR = "logs/chat_bot/" # Каталог для логов
 BAD_WORDS_FILE = f"{DATA_DIR}/bad_words.txt" # Файл базы запрещённых слов
 EXCEPTIONS_FILE = f"{DATA_DIR}/exceptions.txt" # Файл базы исключений
-REPLACEMENTS_FILE = f"{DATA_DIR}/replacements.txt" # Файл правил замены символов для 2 этара проверки
+REPLACEMENTS_FILE = f"{DATA_DIR}/replacements.txt" # Файл правил замены символов для 2 этапа проверки
 MODERATORS_FILE = f"{DATA_DIR}/moderators.txt" # Файл с id модераторами
 GREETINGS_FILE = f"{DATA_DIR}/greetings.json" # Файл приветствий
 TRIGGERS_FILE = f"{DATA_DIR}/triggers.json" # Файл шуток
 DATABASE_FILE = f"{DATA_DIR}/users.db" # Файл базы SQLite
 MEDIA_DIR = "media/" # Каталог медиа
+REPORT_DIR = "reports/" # Каталог для команды /report
 
 # === Настройки Резервного копирования базы данных ===
 ENABLED_BACKUP = True # Включить/отключить резервное копирование

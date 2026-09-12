@@ -166,9 +166,9 @@ async def extract_target_user_id(bot, message, GET_FROM_USER=True):
 async def is_moderator(bot, user_id: int):
     user_name = await get_user_name(bot, user_id)
 
-    if user_id == MODERATORS_IDS[0] or user_name == "@GroupAnonymousBot":
+    if user_id in MODERATORS_IDS or user_name == "@GroupAnonymousBot":
         return True
-    return user_id in MODERATORS_IDS
+    return False
 
 
 

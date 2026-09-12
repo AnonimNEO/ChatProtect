@@ -17,7 +17,7 @@ import os
 from loguru import logger
 
 # Импорт конфигурации
-from config import DATABASE_FILE, DEBUG_MODE
+from config import DATABASE_FILE, DEBUG_MODE, ADMIN_ID
 # Локализация
 from languages import l
 
@@ -143,11 +143,11 @@ def data_operation(user_id, sql):
 
 # Загрузка списка из файла
 def load_list_from_file(filepath):
-    """Загружаем лист из файла"""
+    """Загружаем список id из файла"""
     if os.path.exists(filepath):
         with open(filepath, "r", encoding="utf-8") as f:
-            return [line.strip() for line in f if line.strip()]
-    return []
+            return [int(line.strip()) for line in f if line.strip()]
+    return [ADMIN_ID]
 
 
 
