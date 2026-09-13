@@ -146,7 +146,7 @@ def load_list_from_file(filepath):
     """Загружаем список id из файла"""
     if os.path.exists(filepath):
         with open(filepath, "r", encoding="utf-8") as f:
-            return [int(line.strip()) for line in f if line.strip()]
+            return [line.strip() for line in f if line.strip()]
     return [ADMIN_ID]
 
 

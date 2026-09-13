@@ -321,7 +321,6 @@ async def new_member(bot, message):
 
         logger.info(f'{l("new_user")} {user_id} {l("joined_in")} {entry_date}')
 
-        # Проверяем точный юзернейм (в нижнем регистре)
         greeting_text = None
 
         # Проверяем точный юзернейм

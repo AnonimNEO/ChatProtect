@@ -114,7 +114,7 @@ def text_processing_stage_2(text):
 
 async def user_punishment(bot, message, user_id, count):
     await delete_messages(bot, message, user_id)
-    if not await is_moderator(bot, user_id):
+    if await is_moderator(bot, user_id, True):
         data_operation(user_id,"UPDATE users SET delete_message_count = delete_message_count + 1 WHERE user_id = ?")
         add_violation(user_id, count)
 
@@ -149,7 +149,7 @@ async def messages_handler(bot, message, changed=1):
             logger.debug(f'{l("spam_detect")} {user_id}!')
         if ENABLE_BAN_USER_FOR_SPAM:
             ban_user(user_id, get_ip_address(user_id))
-            if not await is_moderator(bot, user_id):
+            if await is_moderator(bot, user_id, True):
                 await bot.kick_chat_member(message.chat.id, user_id)
         else:
             await user_punishment(bot, message, user_id, SPAM_VIOLATION_MODIFICATOR * changed)

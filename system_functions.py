@@ -29,10 +29,17 @@ from data_base import load_list_from_file, is_user_or_ip_banned
 # Локализация
 from languages import l
 
-MODERATORS_IDS = load_list_from_file(MODERATORS_FILE)
+PRE_MODERATORS_IDS = load_list_from_file(MODERATORS_FILE)
+MODERATORS_IDS = []
+for id in MODERATORS_IDS:
+    MODERATORS_IDS.append(int(id))
+del(PRE_MODERATORS_IDS)
 
 # Данные о спаме пользователей
 user_message_times = {}
+
+# Данные о количестве новых пользователей
+new_users_timestamps = {}
 
 def get_user_data(user_id):
     """Получаем данные о пользователе из SQLite"""
@@ -163,10 +170,14 @@ async def extract_target_user_id(bot, message, GET_FROM_USER=True):
 
 
 # Проверяем является ли пользователь модератором
-async def is_moderator(bot, user_id: int):
+async def is_moderator(bot, user_id: int, reflect=False):
     user_name = await get_user_name(bot, user_id)
 
-    if user_id in MODERATORS_IDS or user_name == "@GroupAnonymousBot":
+    if user_id in MODERATORS_IDS or user_id == ADMIN_ID or user_name == "@GroupAnonymousBot":
+        if reflect:
+            return False
+        return True
+    if reflect:
         return True
     return False
 
@@ -186,6 +197,37 @@ async def is_user_muted(bot, user_id: int):
             return True
 
     return False
+
+
+
+def add_new_user(user_id: int):
+    now = time.time()
+
+    new_users_timestamps[user_id] = now
+
+    # Удаляем пользователей, вошедших более 60 секунд назад
+    new_users_timestamps_cleaned = {
+        uid: ts for uid, ts in new_users_timestamps.items()
+        if now - ts < 60
+    }
+
+    # Обновляем словарь
+    new_users_timestamps.clear()
+    new_users_timestamps.update(new_users_timestamps_cleaned)
+
+    # Возвращаем список активных новых пользователей
+    return list(new_users_timestamps.keys())
+
+
+
+# Альтернативный вариант с методом get_active_new_users()
+def get_active_new_users():
+    now = time.time()
+    active_users = [
+        uid for uid, ts in new_users_timestamps.items()
+        if now - ts < 60
+    ]
+    return active_users
 
 
 

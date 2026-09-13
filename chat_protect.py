@@ -23,8 +23,6 @@ import os
 import signal
 # Асинхронность
 import asyncio
-# Рандомные числа
-import random
 
 # База данных
 from data_base import init_database, load_list_from_file, load_replacements, ban_user, unban_user, add_reputation, subtract_reputation
@@ -32,13 +30,17 @@ from data_base import init_database, load_list_from_file, load_replacements, ban
 from create_backups import schedule_backups
 # Импорт основной конфигурации
 from config import TOKEN, LOGGING, DEBUG_MODE, LOG_DIR, USE_PROXY, PROXY_URL, UNBAN_OWNER, ADMIN_ID, ENABLE_CHECK_IP, \
-    VIOLATIONS_FOR_CHANGE_MODIFICATOR, DEBUG_CHECK_TEXT, DEBUG_JOKES, BOT_ID, REPORT_DIR, EMOJI_OPTIONS, CAPTCHA_ATTEMPTS, ENABLE_CAPTCHA
+    VIOLATIONS_FOR_CHANGE_MODIFICATOR, DEBUG_CHECK_TEXT, DEBUG_JOKES, BOT_ID, REPORT_DIR, CAPTCHA_ATTEMPTS, ENABLE_CAPTCHA, \
+    ENABLE_LIMITATION_LOGIN_IN_MINUTE, MAX_NEW_USERS_IN_MINUTE
 # Импорт данных о базе данных
 from config import DATABASE_FILE, BAD_WORDS_FILE, REPLACEMENTS_FILE, MODERATORS_FILE, ENABLE_JOKES, MEDIA_DIR
 # Импорт данных для /reputation_constants
 from config import MAX_VIOLATIONS, VIOLATION_POINTS_MULTIPLIER, REP_USER_DIVISOR, REP_MODERATOR_DIVISOR
+# Импорт капчи
+from captcha import get_random_captcha, user_captcha_attempts, check_captcha_answer
 # Импорт стандартных функций
-from system_functions import is_moderator, get_user_data, extract_target_user_id, data, is_user_or_ip_banned, get_ip_address, add_mute, get_user_name
+from system_functions import is_moderator, get_user_data, extract_target_user_id, data, is_user_or_ip_banned, get_ip_address, \
+    add_mute, get_user_name, add_new_user, get_active_new_users
 # Импорт шуток
 from jokes import send_audio_reply, cache_media, new_member, get_media_file_path
 # Импорт обработки текста
@@ -46,14 +48,11 @@ from text_handler import messages_handler
 # Локализация
 from languages import l
 
-chat_protect_version = "1.5.4 Alpha"
+chat_protect_version = "1.6.5 Alpha"
 
 # Глобальный флаг для остановки бота
 stop_event = asyncio.Event()
 should_stop = False
-
-# Словарь для отслеживания попыток пользователей: {user_id: {attempt: int, type: str, data: dict}}
-user_captcha_attempts = {}
 
 # Логирование
 if LOGGING:
@@ -76,8 +75,6 @@ else:
 async def handle_help(message):
     if message.chat.type == "private":
         return
-    if not await is_moderator(bot, message.from_user.id):
-        return
     await bot.reply_to(message, l("help_text"))
 
 
@@ -86,7 +83,8 @@ async def handle_help(message):
 async def handle_status(message):
     if message.chat.type == "private" and not DEBUG_MODE:
         return
-    if not await is_moderator(bot, message.from_user.id):
+    is_moder = await is_moderator(bot, message.from_user.id, True)
+    if not is_moder:
         return
 
     conn = sqlite3.connect(DATABASE_FILE)
@@ -95,7 +93,7 @@ async def handle_status(message):
     user_count = cursor.fetchone()[0]
     conn.close()
 
-    if message.chat.type == "private" and await is_moderator(bot, message.from_user.id):
+    if message.chat.type == "private" and is_moder:
         status_text = \
 f"""{l("bot_status")}:
 {l("bot_active")}
@@ -166,7 +164,7 @@ async def handle_status(message):
 
 @bot.message_handler(commands=["data"])
 async def handle_data(message):
-    if message.chat.type == "private" and not await is_moderator(bot, message.from_user.id):
+    if message.chat.type == "private" and await is_moderator(bot, message.from_user.id, True):
         return
     await data(bot, message)
 
@@ -229,7 +227,7 @@ async def handle_minus_rep(message):
 async def handle_mute(message):
     if message.chat.type == "private":
         return
-    if not await is_moderator(bot, message.from_user.id):
+    if await is_moderator(bot, message.from_user.id, True):
         return
 
     target_user_id, points = await extract_target_user_id(bot, message, False)
@@ -266,7 +264,7 @@ async def handle_mute(message):
 async def handle_unmute(message):
     if message.chat.type == "private":
         return
-    if not await is_moderator(bot, message.from_user.id):
+    if await is_moderator(bot, message.from_user.id, True):
         return
 
     target_user_id, points = await extract_target_user_id(bot, message, False)
@@ -300,7 +298,7 @@ async def handle_unmute(message):
 async def handle_ban(message):
     if message.chat.type == "private":
         return
-    if not await is_moderator(bot, message.from_user.id):
+    if await is_moderator(bot, message.from_user.id, True):
         return
     target_user_id, points = await extract_target_user_id(bot, message, False)
 
@@ -329,7 +327,7 @@ async def handle_ban(message):
 async def handle_unban(message):
     if message.chat.type == "private":
         return
-    if not await is_moderator(bot, message.from_user.id):
+    if await is_moderator(bot, message.from_user.id, True):
         return
 
     target_user_id, points = await extract_target_user_id(bot, message, False)
@@ -349,7 +347,7 @@ async def handle_unban(message):
 async def handle_clear(message):
     if message.chat.type == "private":
         return
-    if not await is_moderator(bot, message.from_user.id):
+    if await is_moderator(bot, message.from_user.id, True):
         return
 
     target_user_id, points = await extract_target_user_id(bot, message, False)
@@ -386,7 +384,7 @@ async def handle_clear(message):
 
 @bot.message_handler(commands=["reload"])
 async def handle_reload(message):
-    if not await is_moderator(bot, message.from_user.id):
+    if await is_moderator(bot, message.from_user.id, True):
         return
 
     global BAD_WORDS, REPLACEMENTS, MODERATORS_IDS
@@ -402,93 +400,8 @@ async def handle_reload(message):
 
 @bot.message_handler(commands=["cache_media"])
 async def handle_cache_media(message):
-    if not await is_moderator(bot, message.from_user.id):
-        return
-    await cache_media(bot, message)
-
-
-
-async def generate_emoji_captcha():
-    """Генерируем капчу с эмодзи"""
-    correct_emoji = random.choice(EMOJI_OPTIONS)
-    return {
-        "type": "emoji",
-        "correct": correct_emoji,
-        "message": f'{l("send_emoji")}: {correct_emoji}'
-    }
-
-
-
-async def generate_number():
-    n = random.randint(1000, 10000)
-    return {
-        "type": "code",
-        "correct": n,
-        "message": f'{l("send_code")}: {n}'
-    }
-
-
-
-async def generate_math_captcha():
-    """Генерируем математическую капчу"""
-    num1 = random.randint(1, 20)
-    num2 = random.randint(1, 20)
-    operation = random.choice(["+", "-", "*"])
-
-    if operation == "+":
-        answer = num1 + num2
-    elif operation == "-":
-        answer = num1 - num2
-    else: # *
-        answer = num1 * num2
-
-    return {
-        "type": "math",
-        "correct": str(answer),
-        "message": f'{l("send_result")}: {num1} {operation} {num2} = ?'
-    }
-
-
-
-async def get_random_captcha():
-    """Выбираем случайную капчу"""
-    captcha_gen = random.choice([
-        generate_emoji_captcha(),
-        generate_math_captcha(),
-        generate_number
-    ])
-    return await captcha_gen
-
-
-
-async def check_captcha_answer(user_id, answer):
-    """Проверяем ответ на капчу
-    Возвращает: (passed: bool, should_remove: bool)"""
-    if user_id not in user_captcha_attempts:
-        return False, False
-
-    attempt_data = user_captcha_attempts[user_id]
-    captcha_type = attempt_data["type"]
-
-    is_correct = False
-
-    if captcha_type == "emoji":
-        is_correct = answer == attempt_data["data"]["correct"]
-    elif captcha_type == "math":
-        is_correct = answer.strip() == attempt_data["data"]["correct"]
-    elif captcha_type == "code":
-        is_correct = answer == str(attempt_data["data"]["correct"])
-
-    if is_correct:
-        return True, True # Прошла капча, удалить данные
-
-    # Неправильный ответ, увеличиваем счётчик попыток
-    attempt_data["attempt"] += 1
-
-    if attempt_data["attempt"] >= CAPTCHA_ATTEMPTS:
-        return False, True # Не прошла и нужно удалить данные
-
-    return False, False # Не прошла, но попытки остались
+    if await is_moderator(bot, message.from_user.id):
+        await cache_media(bot, message)
 
 
 
@@ -530,6 +443,11 @@ async def handle_new_member(message):
             f'{user_name}, {l("welcome_your_is_bot")}\n\n{captcha["message"]}',
             reply_to_message_id=message.message_id
         )
+
+    if ENABLE_LIMITATION_LOGIN_IN_MINUTE:
+        add_new_user(user_id)
+        if len(get_active_new_users()) > MAX_NEW_USERS_IN_MINUTE:
+            pass
 
     if ENABLE_JOKES:
         await new_member(bot, message)
