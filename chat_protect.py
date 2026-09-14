@@ -48,7 +48,7 @@ from text_handler import messages_handler
 # Локализация
 from languages import l
 
-chat_protect_version = "1.6.5 Alpha"
+chat_protect_version = "1.7.1 Alpha"
 
 # Глобальный флаг для остановки бота
 stop_event = asyncio.Event()
@@ -143,15 +143,13 @@ async def handle_status(message):
 
     try:
         user_id = message.from_user.id
-        current_datetime = datetime.now().strftime("%d, %m, %Y_%H-%M-%S")
-
         # Извлекаем текст после команды /report
         text_after_command = message.text.split(maxsplit=1)
         report_text = text_after_command[1] if len(text_after_command) > 1 else ""
 
         os.makedirs(REPORT_DIR, exist_ok=True)
         # Записываем в файл
-        with open(f"{REPORT_DIR}{user_id}_{current_datetime}.txt", "w", encoding="utf-8") as f:
+        with open(f"{REPORT_DIR}{user_id}_{datetime.now().strftime("%d, %m, %Y_%H-%M-%S")}.txt", "w", encoding="utf-8") as f:
             f.write(report_text)
 
         await bot.reply_to(message, "Ваше обращение успешно зарегистрировано")

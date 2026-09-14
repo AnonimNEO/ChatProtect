@@ -184,6 +184,7 @@ localizations = {
         "from_the_user": "от пользователя",
         "message_delete_for_bot": "Сообщение было удалено автоматической системой модерации.",
         "spam_detect": "Обнаружен спам от пользователя",
+        "save_delete_message_error": "Ошибка при сохранении удалённого сообщения пользователя",
     },
     # Английский Язык
     "en": {
@@ -327,6 +328,7 @@ localizations = {
         "from_the_user": "from user",
         "message_delete_for_bot": "The message was deleted by the automated moderation system.",
         "spam_detect": "Spam detected from user",
+"save_delete_message_error": "Error saving the deleted user message",
     },
     # Украинский Язык
     "ua": {
@@ -470,6 +472,7 @@ localizations = {
         "from_the_user": "від користувача",
         "message_delete_for_bot": "Повідомлення видалено автоматичною системою модерації.",
         "spam_detect": "Знайдено спам від користувача",
+"save_delete_message_error": "Помилка збереження видаленого повідомлення користувача",
     }
 }
 

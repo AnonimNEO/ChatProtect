@@ -38,6 +38,10 @@ VIOLATIONS_FOR_CHANGE_MODIFICATOR = 2 # Насколько умножить оч
 ENABLE_CAPTCHA = True # Включить капчу для новых пользователей?
 CAPTCHA_ATTEMPTS = 2 # Попыток на решение капчи
 EMOJI_OPTIONS = ["😀", "😎", "🚀", "🎉", "👍", "🔥", "💯", "🐧", "🗿", "✅"] # Эмодзи для капчи
+ENABLE_LIMITATION_LOGIN_IN_MINUTE = True # Включить ограничение входа в группу в минуту
+MAX_NEW_USERS_IN_MINUTE = 10 # Максимум новых пользователей в минуту
+MINUTE_TO_UNLOCK_GROUP = 5 # Сколько минут группа будет недоступна новым пользователям
+ENABLE_SAVE_DELETE_MESSAGES = True # Включить сохранение удалённых сообщений
 
 # Константы для расчета очков репутации
 MAX_VIOLATIONS = 10 # Макс очков нарушений до мута
@@ -61,6 +65,7 @@ TRIGGERS_FILE = f"{DATA_DIR}/triggers.json" # Файл шуток
 DATABASE_FILE = f"{DATA_DIR}/users.db" # Файл базы SQLite
 MEDIA_DIR = "media/" # Каталог медиа
 REPORT_DIR = "reports/" # Каталог для команды /report
+DELETED_MESSAGES_DIR = f"{DATA_DIR}/deleted_messages/"
 
 # === Настройки Резервного копирования базы данных ===
 ENABLED_BACKUP = True # Включить/отключить резервное копирование

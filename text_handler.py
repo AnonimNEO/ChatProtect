@@ -13,13 +13,16 @@ from loguru import logger
 # Обнаружение нарушений
 from difflib import SequenceMatcher
 import re
+# Сохранение удалённых сообщений
+from datetime import datetime
+import os
 
 # Импорт базы данных
 from data_base import load_list_from_file, load_replacements, ban_user, is_user_or_ip_banned, data_operation
 # Импорт конфигурации
 from config import DEBUG_CHECK_TEXT, BAD_WORDS_FILE, EXCEPTIONS_FILE, REPLACEMENTS_FILE, MODERATORS_FILE, ENABLE_JOKES, ENABLE_DIFFLIB
 # Импорт констант
-from config import SPAM_VIOLATION_MODIFICATOR, VIOLATION_FOR_LINKS_MODIFICATOR, FIRST_STAGE_VIOLATION_MODIFICATOR, SECOND_STAGE_VIOLATION_MODIFICATOR, THIRD_STAGE_VIOLATION_MODIFICATOR, MEDIA_DIR
+from config import SPAM_VIOLATION_MODIFICATOR, VIOLATION_FOR_LINKS_MODIFICATOR, FIRST_STAGE_VIOLATION_MODIFICATOR, SECOND_STAGE_VIOLATION_MODIFICATOR, THIRD_STAGE_VIOLATION_MODIFICATOR, MEDIA_DIR, ENABLE_SAVE_DELETE_MESSAGES, DELETED_MESSAGES_DIR
 # Импорт конфигурации обнаружения нарушений
 from config import SIMILARITY_THRESHOLD
 # Импорт конфигурации анти-спам системы
@@ -114,6 +117,14 @@ def text_processing_stage_2(text):
 
 async def user_punishment(bot, message, user_id, count):
     await delete_messages(bot, message, user_id)
+    if ENABLE_SAVE_DELETE_MESSAGES:
+        try:
+            os.makedirs(DELETED_MESSAGES_DIR, exist_ok=True)
+            os.makedirs(f"{DELETED_MESSAGES_DIR}/{user_id}", exist_ok=True)
+            with open(f"{DELETED_MESSAGES_DIR}/{user_id}/{datetime.now().strftime("%d, %m, %Y_%H-%M-%S")}.txt") as f:
+                f.write(message.text())
+        except:
+            logger.exception(f'{l("save_delete_message_error")} {user_id}')
     if await is_moderator(bot, user_id, True):
         data_operation(user_id,"UPDATE users SET delete_message_count = delete_message_count + 1 WHERE user_id = ?")
         add_violation(user_id, count)
