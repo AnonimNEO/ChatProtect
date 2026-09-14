@@ -25,7 +25,7 @@ import signal
 import asyncio
 
 # База данных
-from data_base import init_database, load_list_from_file, load_replacements, ban_user, unban_user, add_reputation, subtract_reputation
+from data_base import init_database, load_list_from_file, load_replacements, ban_user, unban_user, add_reputation, subtract_reputation, data_operation
 # Система бэкапов
 from create_backups import schedule_backups
 # Импорт основной конфигурации
@@ -48,7 +48,7 @@ from text_handler import messages_handler
 # Локализация
 from languages import l
 
-chat_protect_version = "1.7.1 Alpha"
+chat_protect_version = "1.7.3 Alpha"
 
 # Глобальный флаг для остановки бота
 stop_event = asyncio.Event()
@@ -268,13 +268,7 @@ async def handle_unmute(message):
     target_user_id, points = await extract_target_user_id(bot, message, False)
     user_name = await get_user_name(bot, target_user_id)
 
-    conn = sqlite3.connect(DATABASE_FILE)
-    cursor = conn.cursor()
-
-    cursor.execute("DELETE FROM mutations WHERE user_id = ?", (target_user_id,))
-
-    conn.commit()
-    conn.close()
+    data_operation(target_user_id, "DELETE FROM mutations WHERE user_id = ?")
 
     try:
         await bot.restrict_chat_member(
@@ -366,11 +360,7 @@ async def handle_clear(message):
         return
 
     new_violations = current_violations - points
-    conn = sqlite3.connect(DATABASE_FILE)
-    cursor = conn.cursor()
-    cursor.execute("UPDATE users SET violations = ? WHERE user_id = ?", (new_violations, target_user_id))
-    conn.commit()
-    conn.close()
+    data_operation("UPDATE users SET violations = ? WHERE user_id = ?", (new_violations, target_user_id))
 
     await bot.reply_to(message,
         f'✅ {l("the_user_has")} {user_name} {l("removed")} {points} {l("violations")}.\n'

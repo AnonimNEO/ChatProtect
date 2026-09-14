@@ -126,18 +126,15 @@ def remove_mutation(user_id: int):
 
 
 
-def data_operation(user_id, sql):
+def data_operation(sql, params=None):
     try:
         conn = sqlite3.connect(DATABASE_FILE)
         cursor = conn.cursor()
-        cursor.execute(
-            sql,
-            (user_id,)
-        )
+        cursor.execute(sql, params or ())
         conn.commit()
         conn.close()
     except:
-        logger.exception(f'{l("data_base_error")} {user_id} {l("in_command")}:\n{sql}')
+        logger.exception(f'{l("data_base_error")} {l("in_command")}:\n{sql}')
 
 
 

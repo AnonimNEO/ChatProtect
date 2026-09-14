@@ -149,7 +149,7 @@ async def enable_join_requests_temporarily(bot, chat_id: int, duration_minutes: 
         return True
 
     except:
-        logger.exception(f"Ошибка при включении заявок")
+        logger.exception(l("enabling_applications_error"))
         return False
 
 
@@ -180,18 +180,18 @@ async def _join_requests_timer(bot, chat_id: int, duration_minutes: int):
                         user_id=request.from_user.id
                     )
                 except:
-                    logger.exception(f"Ошибка при принятии заявки от {request.from_user.id}")
+                    logger.exception(f'{l("accepting_application_error")} {request.from_user.id}')
 
         # Удаляем из активных таймеров
         if chat_id in active_timers:
             del active_timers[chat_id]
 
-        logger.success(f"Таймер для группы {chat_id} завершен. Заявки отключены, все ожидающие приняты.")
+        logger.success(f'{l("timer_for_group")} {chat_id} {l("accepting_on")}')
 
     except asyncio.CancelledError:
-        logger.info(f"Таймер для группы {chat_id} был отменен.")
+        logger.info(f'{l("timer_for_group")} {chat_id} {l("has_canceled")}')
     except:
-        logger.exception(f"Ошибка в таймере для группы {chat_id}")
+        logger.exception(f'{l("error_in")} {l("timer_for_group")} {chat_id}')
         if chat_id in active_timers:
             del active_timers[chat_id]
 

@@ -114,6 +114,13 @@ localizations = {
         "was_banned": "был забанен (множественные попытки обхода капчи).",
         "attempts": "попыток",
         "wrong_send": "Неправильно! Осталось",
+        # captcha.py
+        "enabling_applications_error": "Ошибка при включении заявок",
+        "accepting_application_error": "Ошибка при принятии заявки от",
+        "accepting_on": "завершен. Заявки отключены, все ожидающие приняты.",
+        "timer_for_group": "Таймер для группы",
+        "has_canceled": "был отменен.",
+        "error_in": "Ошибка в",
         # create_backups.py
         "old_bakcup_delete": "Удалён старый бэкап",
         "create_backup": "Создан бэкап",
@@ -264,6 +271,13 @@ localizations = {
         "was_banned": "was banned (multiple attempts to bypass the CAPTCHA).",
         "attempts": "attempts",
         "wrong_send": "Incorrect! Remaining attempts:",
+        # captcha.py
+        "enabling_applications_error": "Error enabling applications",
+        "accepting_application_error": "Error accepting application from",
+        "accepting_on": "completed. Applications disabled; all pending ones accepted.",
+        "timer_for_group": "Timer for group",
+        "has_canceled": "was cancelled.",
+        "error_in": "Error in",
         # create_backups.py
         "old_bakcup_delete": "Old backup deleted",
         "create_backup": "Backup created",
@@ -408,7 +422,14 @@ localizations = {
         "was_banned": "був забанен (множинні спроби обходу капчі).",
         "attempts": "спроб",
         "wrong_send": "Неправильно! Залишилось",
-        #create_backups.py
+        # captcha.py
+        "enabling_applications_error": "Помилка при включенні заявок",
+        "accepting_application_error": "Помилка при прийнятті заявки від",
+        "accepting_on": "завершено. Заявки відключені, всі, хто очікує, прийнято.",
+        "timer_for_group": "Таймер для групи",
+        "has_canceled": "було скасовано.",
+        "error_in": "Помилка в",
+        # create_backups.py
         "old_bakcup_delete": "Видалено старий бекап",
         "create_backup": "Створено бекап",
         "start_backup_create": "Стартовий бекап створений",
@@ -416,7 +437,7 @@ localizations = {
         "seconds": "секунд",
         "unlock_all": "Розблоковані всі",
         "users_on": "користувачів на",
-        #jokes.py
+        # jokes.py
         "audio_send": "Аудіофайл надіслано відповіддю на повідомлення",
         "file_not_found": "Файл не знайдено",
         "media_send_error": "Помилка надсилання медіа",
@@ -445,7 +466,7 @@ localizations = {
         "joined_in": "вступив до чату",
         "send_hello_error": "Помилка при надсиланні привітання",
         "delete_message_error": "Помилка видалення повідомлення",
-        #system_functions.py
+        # system_functions.py
         "user_not_found": "Не вдалося знайти користувача",
         "add_violation_error": "Помилка додавання порушення для",
         "get_user_info_error": "Помилка отримання даних користувача",
@@ -468,11 +489,11 @@ localizations = {
         "this": "Це",
         "mute": "мут",
         "get_ip_error": "Помилка отримання IP для",
-        #text_handler.py
+        # text_handler.py
         "from_the_user": "від користувача",
         "message_delete_for_bot": "Повідомлення видалено автоматичною системою модерації.",
         "spam_detect": "Знайдено спам від користувача",
-"save_delete_message_error": "Помилка збереження видаленого повідомлення користувача",
+        "save_delete_message_error": "Помилка збереження видаленого повідомлення користувача",
     }
 }
 
