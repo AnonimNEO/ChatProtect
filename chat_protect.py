@@ -48,7 +48,7 @@ from text_handler import messages_handler
 # Локализация
 from languages import l
 
-chat_protect_version = "1.7.4 Alpha"
+chat_protect_version = "1.7.5 Alpha"
 
 # Глобальный флаг для остановки бота
 stop_event = asyncio.Event()
