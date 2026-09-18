@@ -11,7 +11,7 @@ ChatProtect - NEO Organization - это чат бот для телерамм к
 # Минимальные требования
 
 1) Android смартфон (16gb, 2gb ОЗУ)
-2) Termux
+2) Termux (не из-за Google Play)
 3) python3
 	1) loguru
 	2) telebot
