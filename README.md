@@ -28,7 +28,7 @@
  - **Termux *(не из Google Play**, так как там устаревшая версия)*, **Я рекомендую поставить F-Droid**
 
 > [!WARNING]
-> Кстати о **F-Droid, Я не могу не упомянуть Google хочет запретить ставить приложения не из Google Play**, не думаю, что стоит говорить, что это одно из **главных преимуществ android.** Поэтому если **Вы** за **свободный android** - можете перейти по ссылке в описании и **подписать петицию.**
+> Кстати о **F-Droid, Я не могу не упомянуть, что Google хочет запретить ставить приложения не из Google Play**, не думаю, что стоит говорить, что это одно из **главных преимуществ android.** Поэтому если **Вы** за **свободный android** - можете перейти по ссылке в описании и **подписать петицию.**
 
 <a name="install"></a>
 ## Установка
@@ -58,73 +58,128 @@ CURRENT_LOCALIZATION - **Язык** бота *(доступные: ru, en, ua)*
 TOKEN - Токен бота из Bot Father
 
 LOGGING - Включить логирование в файл?
+
 DEBUG_MODE - Включить режим отладки?
+
 DEBUG_CHECK_TEXT - Включить режим отладки для text_handler?
+
 DEBUG_JOKES - Включить отладку для jokes?
 <a name="data-config"></a>
 ### Настройки уникальных данных в /data
 UNBAN_OWNER - Разблокировать создателя?
+
 ADMIN_ID - ID создателя (главного админа)
+
 ADMIN_TYPE - Уникальный тип главного админа
+
 ADMIN_NAME - Уникальное имя главного админа
+
 BOT_ID - ID бота
+
 BOT_TYPE - Уникальный тип бота
+
 BOT_NAME - Уникальное имя бота
 <a name="anti-spam-config"></a>
 ### Настройки анти-спам системы
 ENABLE_DIFFLIB - Включить проверку по не точному совпадению через difflib
-SIMILARITY_THRESHOLD - n% схожести. Порог для нечётких совпадений (работает только при проверке на запрещённые слова)
+
+SIMILARITY_THRESHOLD - n% схожести. Порог для нечётких совпадений 
+(работает только при проверке на запрещённые слова)
+
 ENABLE_CHECK_IP - Включить проверку IP (дольше, а также может заблокировать VPN сервера из-за чего доступ для обычных пользователей может быть затруднён)
+
 MAX_MESSAGES_IN_MINUTE - Максимум сообщений в минуту от одного пользователя
+
 ENABLE_BAN_USER_FOR_SPAM - Банить пользователя за спам (MAX_MESSAGES_IN_MINUTE сообщений за минуту)
+
 SPAM_VIOLATION_MODIFICATOR - Сколько нарушений добавить за спам (если ENABLE_BAN_USER_FOR_SPAM = False)
+
 VIOLATION_FOR_LINKS_MODIFICATOR - Сколько нарушений добавить за ссылку в первых COUNT_MESSAGE_CHECK_FOR_URL сообщений
+
 FIRST_STAGE_VIOLATION_MODIFICATOR - Сколько нарушений на 1 этапе проверки
+
 SECOND_STAGE_VIOLATION_MODIFICATOR - Сколько нарушений на 2 этапе проверки
+
 THIRD_STAGE_VIOLATION_MODIFICATOR - Сколько нарушений на 3 этапе проверки
+
 VIOLATIONS_FOR_CHANGE_MODIFICATOR - Насколько умножить очки нарушений если сообщение было изменено
+
 ENABLE_CAPTCHA - Включить капчу для новых пользователей?
+
 CAPTCHA_ATTEMPTS - Попыток на решение капчи
+
 EMOJI_OPTIONS - Эмодзи для капчи
+
 ENABLE_LIMITATION_LOGIN_IN_MINUTE - Включить ограничение входа в группу в минуту
+
 MAX_NEW_USERS_IN_MINUTE - Максимум новых пользователей в минуту
+
 MINUTE_TO_UNLOCK_GROUP - Сколько минут группа будет недоступна новым пользователям
+
 ENABLE_SAVE_DELETE_MESSAGES - Включить сохранение удалённых сообщений
 <a name="constant-config"></a>
 ### Константы для расчета очков репутации
 MAX_VIOLATIONS - Максимум очков нарушений до мута
+
 VIOLATION_POINTS_MULTIPLIER - 1 нарушение = X очков
+
 REP_USER_DIVISOR - X очков репутации пользователя = -1 очко
+
 REP_MODERATOR_DIVISOR - X очков репутации модератора = -1 очко
+
 COUNT_MESSAGE_CHECK_FOR_URL - Количество первых сообщений для проверки на ссылку
-CHECK_FIRST_URL - Проверять первые COUNT_MESSAGE_CHECK_FOR_URL на ссылку?
+
+CHECK_FIRST_URL - Проверять первые 
+
+COUNT_MESSAGE_CHECK_FOR_URL на ссылку?
+
 COUNT_MINUS_MODERATOR_REP - Количество очков репутации модераторов которые будут сняты при муте
-MINUS_MODERATOR_REP_WHEN_MUTING - Снимать COUNT_MINUS_MODERATOR_REP у пользователя при муте?
+
+MINUS_MODERATOR_REP_WHEN_MUTING - Снимать 
+
+COUNT_MINUS_MODERATOR_REP у пользователя при муте?
 <a name="files-config"></a>
 ### Пути к файлам базы данных
 DATA_DIR - Каталог для базы данных
+
 LOG_DIR - Каталог для логов
+
 BAD_WORDS_FILE - Файл базы запрещённых слов
+
 EXCEPTIONS_FILE - Файл базы исключений
+
 REPLACEMENTS_FILE - Файл правил замены символов для 2 этапа проверки
+
 MODERATORS_FILE - Файл с id модераторами
+
 GREETINGS_FILE - Файл приветствий
+
 TRIGGERS_FILE - Файл шуток
+
 DATABASE_FILE - Файл базы SQLite
+
 MEDIA_DIR - Каталог медиа
+
 REPORT_DIR - Каталог для команды /report
+
 DELETED_MESSAGES_DIR - Каталог для сохранения удалённых сообщений
 <a name="backups-config"></a>
 ### Настройки Резервного копирования базы данных
 ENABLED_BACKUP - Включить резервное копирование?
+
 INTERVAL_BACKUP - Интервал в секундах
+
 BACKUP_DIR - Каталог для бэкапов
+
 COMPRESS_BACKUP - Сжимать ли бэкапы в ZIP?
+
 DELETE_OLD_BACKUPS - Удалять старые бэкапы?
+
 BACKUP_MAX_FILES - Максимальное количество сохранённых бэкапов
 <a name="jokes-config"></a>
 ### Настройки шуток
 ENABLE_JOKES - Включить шутки?
+
 CACHE_PAUSE - Пауза между кешированием медиа в секундах
 #### Поддерживаемые медиа-расширения для шуточных ответов
 ```python
