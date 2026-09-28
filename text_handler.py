@@ -119,10 +119,9 @@ async def user_punishment(bot, message, user_id, count):
     await delete_messages(bot, message, user_id)
     if ENABLE_SAVE_DELETE_MESSAGES:
         try:
-            os.makedirs(DELETED_MESSAGES_DIR, exist_ok=True)
             os.makedirs(f"{DELETED_MESSAGES_DIR}/{user_id}", exist_ok=True)
-            with open(f"{DELETED_MESSAGES_DIR}/{user_id}/{datetime.now().strftime("%d, %m, %Y_%H-%M-%S")}.txt") as f:
-                f.write(message.text())
+            with open(f"{DELETED_MESSAGES_DIR}/{user_id}/{datetime.now().strftime("%d, %m, %Y_%H-%M-%S")}.txt", "w") as f:
+                f.write(message.text)
         except:
             logger.exception(f'{l("save_delete_message_error")} {user_id}')
     if await is_moderator(bot, user_id, True):

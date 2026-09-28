@@ -65,7 +65,7 @@ TRIGGERS_FILE = f"{DATA_DIR}/triggers.json" # Файл шуток
 DATABASE_FILE = f"{DATA_DIR}/users.db" # Файл базы SQLite
 MEDIA_DIR = "media/" # Каталог медиа
 REPORT_DIR = "reports/" # Каталог для команды /report
-DELETED_MESSAGES_DIR = f"{DATA_DIR}/deleted_messages/"
+DELETED_MESSAGES_DIR = f"{DATA_DIR}/deleted_messages/" # Каталог для сохранения удалённых сообщений
 
 # === Настройки Резервного копирования базы данных ===
 ENABLED_BACKUP = True # Включить/отключить резервное копирование
@@ -76,8 +76,8 @@ DELETE_OLD_BACKUPS = True #Удалять старые бэкапы
 BACKUP_MAX_FILES = 10 # Максимальное количество сохранённых бэкапов
 
 # === Настройки шуток ===
-ENABLE_JOKES = True # Включить шутки
-CACHE_PAUSE = 0.1 # Пауза между кешированием медиа
+ENABLE_JOKES = True # Включить шутки?
+CACHE_PAUSE = 0.1 # Пауза между кешированием медиа в секундах
 # Поддерживаемые медиа-расширения для шуточных ответов
 AUDIO_EXTENSIONS = (".mp3", ".ogg", ".wav", ".m4a")
 VIDEO_EXTENSIONS = (".mp4", ".mov", ".avi", ".mkv")
