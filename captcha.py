@@ -74,11 +74,11 @@ async def generate_math_captcha():
 async def get_random_captcha():
     """Выбираем случайную капчу"""
     captcha_gen = random.choice([
-        generate_emoji_captcha(),
-        generate_math_captcha(),
-        generate_number
+        generate_emoji_captcha,
+        generate_math_captcha,
+        generate_number,
     ])
-    return await captcha_gen
+    return await captcha_gen()
 
 
 

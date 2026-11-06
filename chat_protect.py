@@ -48,11 +48,12 @@ from text_handler import messages_handler
 # Локализация
 from languages import l
 
-chat_protect_version = "1.7.8 Alpha"
+chat_protect_version = "1.7.9 Alpha"
 
 # Глобальный флаг для остановки бота
 stop_event = asyncio.Event()
 should_stop = False
+user_violations = {}
 
 # Логирование
 if LOGGING:
@@ -443,7 +444,7 @@ async def handle_new_member(message):
     if ENABLE_LIMITATION_LOGIN_IN_MINUTE:
         add_new_user(user_id)
         if len(get_active_new_users()) > MAX_NEW_USERS_IN_MINUTE:
-            enable_join_requests_temporarily(bot, message.chat.id, MINUTE_TO_UNLOCK_GROUP)
+            await enable_join_requests_temporarily(bot, message.chat.id, MINUTE_TO_UNLOCK_GROUP)
 
     if ENABLE_JOKES:
         await new_member(bot, message)
@@ -462,46 +463,51 @@ async def handle_captcha_answer(message):
     chat_id = attempt_data["chat_id"]
     user_name = await get_user_name(bot, user_id)
 
-    # Проверяем ответ
-    passed, should_remove = await check_captcha_answer(user_id, message.text)
+    text = message.text
+
+    if text is None:
+        # (стикер, фото, голосовое и т.д) - считаем неудачной попыткой
+        attempt_data["attempt"] += 1
+        passed = False
+        should_remove = attempt_data["attempt"] >= CAPTCHA_ATTEMPTS
+        await bot.send_message(chat_id,
+            f'❌ ({user_id}) {l("wrong_send")} {remaining} {l("attempts")}.')
+    else:
+        passed, should_remove = await check_captcha_answer(user_id, text)
+        await bot.send_message(chat_id,
+            f'❌ ({user_id}) {l("wrong_send")} {remaining} {l("attempts")}.')
 
     if passed:
-        # Капча пройдена успешно
-        await bot.send_message(
-            chat_id,
-            f'{user_name}, {l("welcome")}')
+        await bot.send_message(chat_id, f'{user_name}, {l("welcome")}')
         del user_captcha_attempts[user_id]
+        return
 
-    elif should_remove:
-        # Исчерпаны попытки
-        fail_count = attempt_data.get("fail_count", 1)
+    try:
+        await bot.delete_message(chat_id, message.message_id)
+    except:
+        logger.exception(f'{l("delete_message_error")} {message.message_id} ({user_id})')
 
-        if -1 < fail_count < 3:
-            # Первый и второй раз - кик
+    if should_remove:
+        count = user_violations.get(user_id, 0) + 1
+        user_violations[user_id] = count
+
+        if count < 3:
             await bot.kick_chat_member(chat_id, user_id)
-            await bot.send_message(
-                chat_id,
-                f'❌ {user_name} {l("was_kicked")}'
-            )
+            await bot.send_message(chat_id, f'❌ {user_name} {l("was_kicked")}')
         else:
-            # Третий раз - бан
-            ban_user(user_id, await get_ip_address(user_id))
+            ip = await get_ip_address(user_id) if ENABLE_CHECK_IP else None
+            ban_user(user_id, ip)
             await bot.kick_chat_member(chat_id, user_id)
-            await bot.send_message(
-                chat_id,
-                f'🚫 {user_name} {l("was_banned")}'
-            )
+            await bot.send_message(chat_id, f'🚫 {user_name} {l("was_banned")}')
+            del user_violations[user_id]
 
         del user_captcha_attempts[user_id]
 
     else:
-        # Осталось ещё попыток
+        # Осталось ещё попытки
         remaining = CAPTCHA_ATTEMPTS - attempt_data["attempt"]
-        await bot.send_message(
-            chat_id,
-            f'❌ {l("wrong_send")} {remaining} {l("attempts")}.',
-            reply_to_message_id=message.message_id
-        )
+        await bot.send_message(chat_id,
+            f'❌ {l("wrong_send")} {remaining} {l("attempts")}.')
 
 
 
