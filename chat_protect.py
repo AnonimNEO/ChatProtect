@@ -31,13 +31,13 @@ from create_backups import schedule_backups
 # Импорт основной конфигурации
 from config import TOKEN, LOGGING, DEBUG_MODE, LOG_DIR, USE_PROXY, PROXY_URL, UNBAN_OWNER, ADMIN_ID, ENABLE_CHECK_IP, \
     VIOLATIONS_FOR_CHANGE_MODIFICATOR, DEBUG_CHECK_TEXT, DEBUG_JOKES, BOT_ID, REPORT_DIR, CAPTCHA_ATTEMPTS, ENABLE_CAPTCHA, \
-    ENABLE_LIMITATION_LOGIN_IN_MINUTE, MAX_NEW_USERS_IN_MINUTE
+    ENABLE_LIMITATION_LOGIN_IN_MINUTE, MAX_NEW_USERS_IN_MINUTE, MINUTE_TO_UNLOCK_GROUP
 # Импорт данных о базе данных
 from config import DATABASE_FILE, BAD_WORDS_FILE, REPLACEMENTS_FILE, MODERATORS_FILE, ENABLE_JOKES, MEDIA_DIR
 # Импорт данных для /reputation_constants
 from config import MAX_VIOLATIONS, VIOLATION_POINTS_MULTIPLIER, REP_USER_DIVISOR, REP_MODERATOR_DIVISOR
 # Импорт капчи
-from captcha import get_random_captcha, user_captcha_attempts, check_captcha_answer
+from captcha import get_random_captcha, user_captcha_attempts, check_captcha_answer, enable_join_requests_temporarily
 # Импорт стандартных функций
 from system_functions import is_moderator, get_user_data, extract_target_user_id, data, is_user_or_ip_banned, get_ip_address, \
     add_mute, get_user_name, add_new_user, get_active_new_users
