@@ -48,7 +48,7 @@ from text_handler import messages_handler
 # Локализация
 from languages import l
 
-chat_protect_version = "1.7.7 Alpha"
+chat_protect_version = "1.7.8 Alpha"
 
 # Глобальный флаг для остановки бота
 stop_event = asyncio.Event()
@@ -443,7 +443,7 @@ async def handle_new_member(message):
     if ENABLE_LIMITATION_LOGIN_IN_MINUTE:
         add_new_user(user_id)
         if len(get_active_new_users()) > MAX_NEW_USERS_IN_MINUTE:
-            pass
+            enable_join_requests_temporarily(bot, message.chat.id, MINUTE_TO_UNLOCK_GROUP)
 
     if ENABLE_JOKES:
         await new_member(bot, message)
