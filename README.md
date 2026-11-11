@@ -334,6 +334,11 @@ ID модераторов находятся в **DATA_DIR/moderators.txt**.
 <a name="backups"></a>
 На случай если, что-то пойдёт не так - в боте реализована автоматическая система бэкапов. Весь каталог **DATA_DIR** архивируется *(настраивается)* и сохраняется в **BACKUPS_DIR**.
 
+## Особые благодарности
+<a name="thanks"></a>
+- ### За помощь в тестировании
+	- Алексик
+
 ### Нашли ошибку? Хотите помочь проекту?
 <a name="help"></a>
 Можете сообщить об этом на [Github](https://github.com/AnonimNEO/ChatProtect) или [Codeberg](https://codeberg.org/AnonimNEO/ChatProtect) или же написать на почту: neo.organization.official@gmail.com
